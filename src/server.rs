@@ -16,8 +16,8 @@ pub fn create_router(
         .route("/api/health", axum::routing::get(health))
         .route("/api/reload", axum::routing::post(reload_config))
         .route("/api/sensors", axum::routing::get(get_sensors))
-        .route("/api/sensors/:chip_id", axum::routing::get(get_sensor))
-        .route("/api/sensors/:chip_id/features", axum::routing::get(get_sensor_features))
+        .route("/api/sensors/{chip_id}", axum::routing::get(get_sensor))
+        .route("/api/sensors/{chip_id}/features", axum::routing::get(get_sensor_features))
         .with_state(state.clone());
 
     // Serve static files at /static/

@@ -1,0 +1,127 @@
+name: Test & Coverage
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  lint:
+    name: Lint (clippy + fmt)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-registry-
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-build-
+
+      - name: Install libsensors-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsensors-dev libclang-dev pkg-config
+
+      - name: Run cargo fmt
+        run: cargo fmt -- --check
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-registry-
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-build-
+
+      - name: Install libsensors-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsensors-dev libclang-dev pkg-config
+
+      - name: Run tests
+        run: cargo test --all-features --all-targets
+
+  coverage:
+    name: Coverage (grcov)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-registry-
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-coverage-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-build-coverage-
+
+      - name: Install libsensors-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsensors-dev libclang-dev pkg-config
+
+      - name: Install grcov
+        uses: baptiste0904/grcov-action@v2
+        with:
+          generate-report: true
+          output-type: lcov
+          output-path: coverage.lcov
+          files-with-line-numbers-file: target/debug/lm-sensors-web
+          toolchain: stable
+
+      - name: Run tests with coverage instrumentation
+        run: |
+          rustup component add llvm-tools-preview
+          CARGO_INCREMENTAL=0 \
+          RUSTFLAGS='-C instrument-coverage' \
+          LLVM_PROFILE_FILE='target/coverage/%p-%p.profraw' \
+          cargo test --all-features --all-targets
+
+      - name: Generate coverage report
+        run: |
+          rustup component add llvm-tools-preview 2>/dev/null || true
+          cargo install cargo-llvm-cov --locked 2>/dev/null || true
+          cargo llvm-cov --lcov --output-path coverage.lcov
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.lcov
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}

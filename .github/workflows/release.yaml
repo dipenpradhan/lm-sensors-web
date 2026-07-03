@@ -1,0 +1,123 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Semver version (e.g., 0.1.0)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run (no publish)'
+        default: true
+        type: boolean
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed for git tag
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-registry-
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-build-
+
+      - name: Install libsensors-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsensors-dev libclang-dev pkg-config
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          elif [[ "${{ github.event.inputs.version }}" != "" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            CURRENT=$(grep '^version = ' Cargo.toml | head -1 | cut -d'"' -f2)
+            # Bump patch version
+            MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+            MINOR=$(echo "$CURRENT" | cut -d. -f2)
+            PATCH=$(echo "$CURRENT" | cut -d. -f3)
+            VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build release binaries
+        run: |
+          # Linux x86_64
+          cargo build --release --target x86_64-unknown-linux-gnu
+          mv target/x86_64-unknown-linux-gnu/release/lm-sensors-web target/release/lm-sensors-web-linux-x86_64
+
+          # Linux aarch64 (cross-compile if target available)
+          rustup target add aarch64-unknown-linux-gnu || true
+          cargo build --release --target aarch64-unknown-linux-gnu || true
+          if [[ -f target/aarch64-unknown-linux-gnu/release/lm-sensors-web ]]; then
+            mv target/aarch64-unknown-linux-gnu/release/lm-sensors-web target/release/lm-sensors-web-linux-aarch64
+          fi
+
+      - name: Create release assets
+        run: |
+          cd target/release
+          for f in lm-sensors-web-*; do
+            sha256sum "$f" > "${f}.sha256"
+            tar czf "${f}.tar.gz" "$f"
+            sha256sum "${f}.tar.gz" > "${f}.tar.gz.sha256"
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: target/release/lm-sensors-web-*.tar.gz target/release/lm-sensors-web-*.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to crates.io
+        if: ${{ !inputs.dry_run || github.event_name == 'push' }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          # Update version in Cargo.toml
+          sed -i "s/^version = \".*\"/version = \"${{ steps.version.outputs.version }}\"/" Cargo.toml
+          cargo publish --allow-dirty || echo "crates.io publish skipped (no token or already published)"
+
+  release-drafter:
+    name: Draft Release (manual dispatch without tag)
+    needs: release
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create lightweight tag
+        run: |
+          VERSION="${{ steps.version.outputs.version || github.event.inputs.version || '0.0.1' }}"
+          git tag -a "v${VERSION}" -m "Release v${VERSION}"
+          git push origin "v${VERSION}" || echo "Tag push failed (may already exist)"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
