@@ -1,6 +1,5 @@
 // Integration tests for WebSocket broadcast mechanics
 
-use std::sync::Arc;
 use tokio::sync::broadcast;
 use std::time::Duration;
 

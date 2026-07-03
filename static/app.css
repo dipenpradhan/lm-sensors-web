@@ -1,0 +1,198 @@
+/* ── Reset & Base ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg:          #1a1b2e;
+  --surface:     #242640;
+  --surface-hi:  #2e3050;
+  --text:        #c8c9e0;
+  --text-dim:    #7a7d9a;
+  --accent:      #7eb8da;
+  --border:      #383b58;
+  --radius:      10px;
+
+  /* Pastel palette for sensor units */
+  --temp:        #f4a8a8;   /* pink   */
+  --volt:        #a8e6cf;   /* mint   */
+  --current:     #f7d98e;   /* peach  */
+  --power:       #c5a8f7;   /* lavender */
+  --energy:      #8ed6f7;   /* sky    */
+  --rpm:         #a8f7c3;   /* lime   */
+  --percent:     #f7c3a8;   /* coral  */
+  --other:       #b8b8d0;   /* grey   */
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.45;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+#filter {
+  background: var(--surface-hi);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .5rem .85rem;
+  color: var(--text);
+  font-size: .875rem;
+  width: 260px;
+  outline: none;
+  transition: border-color .2s;
+}
+#filter:focus {
+  border-color: var(--accent);
+}
+#filter::placeholder { color: var(--text-dim); }
+
+/* ── Status indicator ───────────────────────────────────── */
+.status {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  font-size: .8rem;
+  color: var(--text-dim);
+}
+.status .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+.status.connected  .dot { background: #66e07e; box-shadow: 0 0 6px #66e07e88; }
+.status.disconnected .dot { background: #e06666; box-shadow: 0 0 6px #e0666688; }
+
+/* ── Grid ───────────────────────────────────────────────── */
+main {
+  padding: 1.5rem 2rem 3rem;
+}
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1rem;
+}
+
+/* ── Card (chip) ────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: box-shadow .2s;
+}
+.card:hover { box-shadow: 0 2px 12px #0008; }
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .75rem 1rem;
+  cursor: pointer;
+  user-select: none;
+}
+.card-header:hover { background: var(--surface-hi); }
+
+.card-title {
+  font-weight: 600;
+  font-size: .9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+}
+
+.card-meta {
+  font-size: .75rem;
+  color: var(--text-dim);
+}
+
+.card-chevron {
+  transition: transform .2s;
+  color: var(--text-dim);
+  font-size: .7rem;
+}
+.card.expanded .card-chevron { transform: rotate(180deg); }
+
+/* ── Feature rows ───────────────────────────────────────── */
+.card-body {
+  display: none;
+  border-top: 1px solid var(--border);
+}
+.card.expanded .card-body { display: block; }
+
+.feature {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .55rem 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: .825rem;
+}
+.feature:last-child { border-bottom: none; }
+
+.feature-name {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.feature-val {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* ── Unit-colour accents ────────────────────────────────── */
+.feature-val.temp   { color: var(--temp); }
+.feature-val.volt   { color: var(--volt); }
+.feature-val.current { color: var(--current); }
+.feature-val.power  { color: var(--power); }
+.feature-val.energy { color: var(--energy); }
+.feature-val.rpm    { color: var(--rpm); }
+.feature-val.percent{ color: var(--percent); }
+.feature-val.other  { color: var(--other); }
+
+/* ── Empty state ────────────────────────────────────────── */
+.empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-dim);
+  font-size: .9rem;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

@@ -4,6 +4,7 @@ use crate::config::Config;
 use crate::sensors::SensorManager;
 use crate::websocket::WebSocketState;
 
+#[allow(dead_code)] // ws_state used by future WS client filter feature
 #[derive(Clone)]
 pub struct AppState {
     pub sensor_manager: Arc<SensorManager>,

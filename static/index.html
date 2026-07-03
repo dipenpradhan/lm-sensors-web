@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>lm-sensors-web</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header>
+    <h1>lm-sensors-web</h1>
+    <div class="controls">
+      <input type="text" id="filter" placeholder="Filter chips / features..." autocomplete="off">
+      <div class="status" id="status">
+        <span class="dot"></span>
+        <span class="label">Connecting...</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div id="grid"></div>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,7 +1,11 @@
 [package]
-name = "lm-sensors-api"
+name = "lm-sensors-web"
 version = "0.1.0"
 edition = "2024"
+
+[[bin]]
+name = "lm-sensors-web"
+path = "src/main.rs"
 
 [dependencies]
 axum = { version = "0.8", features = ["ws", "macros"] }
@@ -15,6 +19,6 @@ clap = { version = "4", features = ["derive"] }
 reqwest = { version = "0.12", features = ["json", "stream"] }
 chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
-tower-http = { version = "0.6", features = ["cors"] }
+tower-http = { version = "0.6", features = ["cors", "fs"] }
 dirs = "6"
 tempfile = "3"

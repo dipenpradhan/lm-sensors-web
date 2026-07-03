@@ -1,6 +1,6 @@
 // Integration tests for REST API data models and CLI
 
-use lm_sensors_api::config::{Config, ServerConfig};
+use lm_sensors_web::config::{Config, ServerConfig};
 
 #[test]
 fn test_default_config_values() {

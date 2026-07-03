@@ -1,7 +1,7 @@
 // Integration tests for webhook configuration and sensor data
 
-use lm_sensors_api::config::{WebhookConfig, WebhookTrigger, WebhookCondition};
-use lm_sensors_api::sensors::{ChipInfo, ChipReadings, FeatureInfo, SensorReadings, SubFeatureInfo};
+use lm_sensors_web::config::{WebhookConfig, WebhookTrigger, WebhookCondition};
+use lm_sensors_web::sensors::{ChipInfo, ChipReadings, FeatureInfo, SensorReadings, SubFeatureInfo};
 
 #[test]
 fn test_webhook_config_serde() {
