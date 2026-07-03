@@ -1,0 +1,19 @@
+# Build targets
+/target/
+
+# Rust analyzer
+/.idea/
+.vscode/
+*.rs.bk
+
+# IDE
+*.swp
+*.swo
+*~
+
+# Config files not in vcs
+config.json
+
+# Plans
+PROMPT.md
+PLAN.md
