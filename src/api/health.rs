@@ -1,3 +1,9 @@
+//! # Health and config endpoints
+//!
+//! - `GET /api/health` — liveness probe (returns status + timestamp)
+//! - `POST /api/reload` — reload config file at runtime
+
+use axum::http::StatusCode;
 use axum::Json;
 use axum::extract::State;
 use chrono::Local;
@@ -6,6 +12,10 @@ use serde_json::json;
 use crate::config::Config;
 use crate::state::AppState;
 
+/// Liveness probe endpoint.
+///
+/// Returns `{"status": "ok", "timestamp": "..."}` with 200 OK.
+/// Used by load balancers, health-check scripts, and Kubernetes probes.
 pub async fn health() -> Json<serde_json::Value> {
     Json(json!({
         "status": "ok",
@@ -13,24 +23,38 @@ pub async fn health() -> Json<serde_json::Value> {
     }))
 }
 
+/// Reload the configuration file at runtime.
+///
+/// Reads the config path from `AppState` (set by `main.rs`).
+/// Updates the shared `RwLock<Config>` so subsequent requests
+/// use the new values (webhook URLs, broadcast intervals, etc.).
+///
+/// Returns:
+/// - 200 OK with success message on reload
+/// - 500 Internal Server Error if reload failed
 pub async fn reload_config(
     State(state): State<AppState>,
-) -> Json<serde_json::Value> {
-    let config_path = std::env::var("CONFIG_PATH")
-        .unwrap_or_else(|_| std::string::String::from("config.json"));
-    let path = std::path::Path::new(&config_path);
+) -> (StatusCode, Json<serde_json::Value>) {
+    let path = std::path::Path::new(&state.config_path);
 
     match Config::load(path) {
         Ok(new_config) => {
+            // Update the shared config behind the async RwLock.
             *state.config.write().await = new_config;
-            Json(json!({
-                "status": "ok",
-                "message": "Config reloaded successfully"
-            }))
+            (
+                StatusCode::OK,
+                Json(json!({
+                    "status": "ok",
+                    "message": "Config reloaded successfully"
+                })),
+            )
         }
-        Err(e) => Json(json!({
-            "status": "error",
-            "message": format!("Failed to reload config: {}", e)
-        })),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "status": "error",
+                "message": format!("Failed to reload config: {}", e)
+            })),
+        ),
     }
 }

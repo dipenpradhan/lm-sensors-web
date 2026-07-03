@@ -1,7 +1,7 @@
 // Integration tests for webhook configuration and sensor data
 
 use lm_sensors_web::config::{WebhookConfig, WebhookTrigger, WebhookCondition};
-use lm_sensors_web::sensors::{ChipInfo, ChipReadings, FeatureInfo, SensorReadings, SubFeatureInfo};
+use lm_sensors_web::sensors::{Device, DeviceReadings, FeatureInfo, SensorReadings, SubFeatureInfo};
 
 #[test]
 fn test_webhook_config_serde() {
@@ -27,8 +27,8 @@ fn test_webhook_config_serde() {
 #[test]
 fn test_sensor_readings_temps() {
     let readings = SensorReadings {
-        chips: vec![ChipReadings {
-            chip: ChipInfo {
+        devices: vec![DeviceReadings {
+            device: Device {
                 name: "coretemp".into(),
                 bus: "ISA".into(),
                 path: None,
@@ -54,8 +54,8 @@ fn test_sensor_readings_temps() {
         }],
     };
 
-    let temps: Vec<f64> = readings.chips.iter()
-        .flat_map(|c| c.features.iter())
+    let temps: Vec<f64> = readings.devices.iter()
+        .flat_map(|d| d.features.iter())
         .flat_map(|f| f.sub_features.iter())
         .filter_map(|s| s.value)
         .collect();

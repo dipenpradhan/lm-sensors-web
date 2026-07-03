@@ -35,8 +35,8 @@ async fn test_broadcast_json_sensor_payload() {
     let mut rx = tx.subscribe();
 
     let payload = serde_json::json!({
-        "chips": [{
-            "chip": {"name": "test", "bus": "ISA", "path": "/sys/test"},
+        "devices": [{
+            "device": {"name": "test", "bus": "ISA", "path": "/sys/test"},
             "features": []
         }]
     });

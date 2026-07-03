@@ -1,10 +1,4 @@
-/* ── Reset & Base ─────────────────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
+/* ── Custom properties ───────────────────────────────────── */
 :root {
   --bg:          #1a1b2e;
   --surface:     #242640;
@@ -14,27 +8,50 @@
   --accent:      #7eb8da;
   --border:      #383b58;
   --radius:      10px;
+  --focus-ring:  0 0 0 2px var(--accent);
 
-  /* Pastel palette for sensor units */
-  --temp:        #f4a8a8;   /* pink   */
-  --volt:        #a8e6cf;   /* mint   */
-  --current:     #f7d98e;   /* peach  */
-  --power:       #c5a8f7;   /* lavender */
-  --energy:      #8ed6f7;   /* sky    */
-  --rpm:         #a8f7c3;   /* lime   */
-  --percent:     #f7c3a8;   /* coral  */
-  --other:       #b8b8d0;   /* grey   */
+  /* Pastel palette — unit-coloured values */
+  --temp:        #f4a8a8;
+  --volt:        #a8e6cf;
+  --current:     #f7d98e;
+  --power:       #c5a8f7;
+  --energy:      #8ed6f7;
+  --rpm:         #a8f7c3;
+  --percent:     #f7c3a8;
+  --other:       #b8b8d0;
 }
 
-html, body {
+/* ── Reset ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
   height: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.45;
+  min-height: 100%;
+}
+
+/* ── Screen-reader only helper ──────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Focus-visible (keyboard navigation) ───────────────── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* ── Header ─────────────────────────────────────────────── */
@@ -73,8 +90,9 @@ header h1 {
   outline: none;
   transition: border-color .2s;
 }
-#filter:focus {
+#filter:focus-visible {
   border-color: var(--accent);
+  box-shadow: var(--focus-ring);
 }
 #filter::placeholder { color: var(--text-dim); }
 
@@ -91,6 +109,7 @@ header h1 {
   height: 8px;
   border-radius: 50%;
   background: var(--text-dim);
+  transition: background .3s;
 }
 .status.connected  .dot { background: #66e07e; box-shadow: 0 0 6px #66e07e88; }
 .status.disconnected .dot { background: #e06666; box-shadow: 0 0 6px #e0666688; }
@@ -106,13 +125,13 @@ main {
   gap: 1rem;
 }
 
-/* ── Card (chip) ────────────────────────────────────────── */
+/* ── Card (device) ─────────────────────────────────────── */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  transition: box-shadow .2s;
+  transition: box-shadow .2s, transform .2s;
 }
 .card:hover { box-shadow: 0 2px 12px #0008; }
 
@@ -123,8 +142,16 @@ main {
   padding: .75rem 1rem;
   cursor: pointer;
   user-select: none;
+  list-style: none;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
 }
-.card-header:hover { background: var(--surface-hi); }
+.card-header:hover,
+.card-header:focus-visible { background: var(--surface-hi); }
 
 .card-title {
   font-weight: 600;
@@ -132,18 +159,22 @@ main {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 70%;
+  max-width: 60%;
 }
 
 .card-meta {
   font-size: .75rem;
   color: var(--text-dim);
+  margin-left: auto;
+  padding-left: 1rem;
 }
 
 .card-chevron {
   transition: transform .2s;
   color: var(--text-dim);
   font-size: .7rem;
+  flex-shrink: 0;
+  margin-left: .5rem;
 }
 .card.expanded .card-chevron { transform: rotate(180deg); }
 
@@ -186,6 +217,7 @@ main {
 
 /* ── Empty state ────────────────────────────────────────── */
 .empty {
+  grid-column: 1 / -1;
   text-align: center;
   padding: 3rem 1rem;
   color: var(--text-dim);
@@ -196,3 +228,19 @@ main {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── Accessibility: reduced motion ──────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 600px) {
+  header { padding: 1rem; }
+  main { padding: 1rem; }
+  #filter { width: 100%; }
+  #grid { grid-template-columns: 1fr; }
+}

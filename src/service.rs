@@ -1,14 +1,49 @@
+//! # Systemd service management module
+//!
+//! Provides utilities for installing, managing, and removing a
+//! systemd service unit file for lm-sensors-web.
+//!
+//! # Operations
+//!
+//! | Method        | Action                                           |
+//! |--------------|--------------------------------------------------|
+//! | `install`    | Write unit file + `daemon-reload`                |
+//! | `uninstall`  | Stop, disable, remove unit file + `daemon-reload`|
+//! | `control`    | Delegate to `systemctl <action>` (start/stop/etc) |
+//! | `status`     | Show service status via `systemctl status`        |
+//!
+//! # Unit file
+//!
+//! The generated unit file is a standard systemd `[Service]` unit with:
+//! - `Restart=on-failure` for auto-recovery
+//! - Journal logging for standard output/error
+//! - Configurable binary path and config file via environment variables
+
 use std::fs;
 use std::path::PathBuf;
 use tracing::warn;
 
-const SVC_NAME: &str = "lm-sensors-api";
+/// Service name used in systemd unit file names.
+const SVC_NAME: &str = "lm-sensors-web";
 
+/// Systemd service manager.
+///
+/// Provides static methods for service lifecycle management.
+/// All methods delegate to `systemctl` for the actual operations.
 pub struct ServiceManager;
 
 impl ServiceManager {
+    /// Install the service by writing a unit file and reloading systemd.
+    ///
+    /// # Arguments
+    /// * `binary` — absolute path to the compiled binary
+    /// * `config` — absolute path to the config JSON file
+    /// * `user` — `true` for user-level service, `false` for system-wide
     pub fn install(binary: &str, config: &str, user: bool) -> Result<(), String> {
+        // Generate the systemd unit file content.
         let unit = Self::unit_file(binary, config);
+
+        // Determine the target directory based on user vs system service.
         let dir = if user {
             dirs::config_dir()
                 .map(|d| d.join("systemd/user"))
@@ -17,21 +52,26 @@ impl ServiceManager {
             PathBuf::from("/etc/systemd")
         };
 
+        // Write the unit file.
         let path = dir.join(format!("{}.service", SVC_NAME));
         if let Some(p) = path.parent() {
             fs::create_dir_all(p).map_err(|e| format!("mkdir: {}", e))?;
         }
         fs::write(&path, &unit).map_err(|e| format!("write: {}", e))?;
 
+        // Reload systemd to pick up the new unit file.
         Self::run_systemctl(user, "daemon-reload");
         tracing::info!("Installed: {}", path.display());
         Ok(())
     }
 
+    /// Uninstall the service: stop, disable, remove the unit file.
     pub fn uninstall(user: bool) -> Result<(), String> {
+        // Stop and disable the service before removing the file.
         Self::run_systemctl(user, "stop");
         Self::run_systemctl(user, "disable");
 
+        // Determine and remove the unit file.
         let dir = if user {
             dirs::config_dir()
                 .map(|d| d.join("systemd/user"))
@@ -48,16 +88,22 @@ impl ServiceManager {
         Ok(())
     }
 
+    /// Control the service: start, stop, or restart via systemctl.
     pub fn control(action: &str, user: bool) -> Result<(), String> {
         Self::run_systemctl(user, action);
         Ok(())
     }
 
+    /// Show the current service status.
     pub fn status(user: bool) -> Result<(), String> {
         Self::run_systemctl(user, "status");
         Ok(())
     }
 
+    /// Run a `systemctl` command.
+    ///
+    /// Adds the `--user` flag for user-level services.
+    /// Silently logs errors (systemctl failures are non-fatal).
     fn run_systemctl(user: bool, action: &str) {
         let flag = if user { "--user" } else { "" };
         let _ = std::process::Command::new("systemctl")
@@ -66,10 +112,14 @@ impl ServiceManager {
             .map_err(|e| warn!("systemctl {}: {}", action, e));
     }
 
+    /// Generate a systemd unit file string.
+    ///
+    /// Produces a standard `[Unit] / [Service] / [Install]` unit file
+    /// with auto-restart, journal logging, and environment variables.
     pub fn unit_file(binary: &str, config: &str) -> String {
         format!(
             r#"[Unit]
-Description=LM Sensors API Service
+Description=LM Sensors Web API Service
 After=network.target
 
 [Service]
@@ -94,14 +144,23 @@ WantedBy=multi-user.target
 mod tests {
     use super::*;
 
+    /// Verify the generated unit file contains all required sections.
     #[test]
     fn test_unit_file() {
-        let u = ServiceManager::unit_file("/usr/bin/lm-sensors-api", "/etc/lm-sensors-api/config.json");
+        let u = ServiceManager::unit_file("/usr/bin/lm-sensors-web", "/etc/lm-sensors-web/config.json");
         assert!(u.contains("[Unit]"));
         assert!(u.contains("[Service]"));
         assert!(u.contains("[Install]"));
         assert!(u.contains("Type=simple"));
         assert!(u.contains("Restart=on-failure"));
         assert!(u.contains("WantedBy=multi-user.target"));
+    }
+
+    /// Verify the unit file contains the correct binary and config paths.
+    #[test]
+    fn test_unit_file_paths() {
+        let u = ServiceManager::unit_file("/opt/my-bin", "/etc/my-config.json");
+        assert!(u.contains("ExecStart=/opt/my-bin"));
+        assert!(u.contains("CONFIG_PATH=/etc/my-config.json"));
     }
 }

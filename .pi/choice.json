@@ -1,0 +1,13 @@
+{
+  "type":"piweb_choice",
+  "id":"sensor-entity-name",
+  "question":"What should we call these hardware sensor entities?",
+  "options":[
+    {"label":"devices","value":"device","description":"Hardware devices (coretemp, nvme, acpitz, etc.)"},
+    {"label":"sensors","value":"sensor","description":"General term for sensor entities"},
+    {"label":"controllers","value":"controller","description":"Sensor controller chips"},
+    {"label":"modules","value":"module","description":"Kernel sensor modules"},
+    {"label":"hardware","value":"hardware","description":"Raw hardware sensor entities"}
+  ],
+  "allowCustom":true
+}

@@ -1,80 +1,89 @@
+//! # Command-line interface
+//!
+//! Uses `clap` derive macros for argument parsing. Supports two modes:
+//!
+//! 1. **Server mode** (default): parses `-H`/`-p`/`-c`/`-l` flags and starts the HTTP server.
+//! 2. **Service mode**: delegates to subcommands (`install-service`, `start-service`, etc.)
+//!    which manage systemd unit files without starting the server.
+
 use clap::{Parser, Subcommand, ValueEnum};
 
-/// Hardware sensor monitoring REST API with CLI
+/// Top-level CLI parser.
+///
+/// When no subcommand is given, the server starts. Subcommands like
+/// `install-service` perform service management and exit early.
 #[derive(Parser, Debug)]
-#[command(name = "lm-sensors-api", version, about)]
+#[command(name = "lm-sensors-web", version, about = "Hardware sensor monitoring REST API with CLI")]
 pub struct Cli {
+    /// Subcommand (service management). `None` = start the server.
     #[command(subcommand)]
     pub command: Option<Command>,
 
-    /// Override bind address (default 0.0.0.0)
+    /// Bind address override (default: 0.0.0.0 — all interfaces).
     #[arg(short = 'H', long, default_value = "0.0.0.0")]
     pub host: String,
 
-    /// Override listen port (default 47890)
+    /// Listen port override (default: 47890 — outside well-known range).
     #[arg(short = 'p', long, default_value = "47890")]
     pub port: u16,
 
-    /// Logging level
+    /// Logging verbosity (trace is most detailed, error is least).
     #[arg(short, long, default_value = "info")]
     pub log_level: LogLevel,
 
-    /// Path to JSON config file
+    /// Path to JSON config file. Falls back to built-in defaults if missing.
     #[arg(short, long)]
     pub config: Option<String>,
 }
 
+/// Service-management subcommands. Each delegates to `ServiceManager`
+/// for systemd unit file manipulation and `systemctl` calls.
 #[derive(Subcommand, Debug)]
 pub enum Command {
-    /// Start the HTTP server
+    /// Explicit start subcommand (same as no subcommand).
     Start {
         #[arg(short = 'H', long)]
         host: Option<String>,
         #[arg(short = 'p', long)]
         port: Option<u16>,
     },
-
-    /// Install as a systemd service
+    /// Write a systemd unit file and run `daemon-reload`.
     InstallService {
-        /// Install as user service
+        /// User-level service (vs. system-wide).
         #[arg(long)]
         user: bool,
-        /// Path to the binary
+        /// Absolute path to the compiled binary.
         #[arg(long)]
         binary: Option<String>,
-        /// Path to config file
-        #[arg(long, default_value = "/etc/lm-sensors-api/config.json")]
+        /// Config file path baked into the unit file.
+        #[arg(long, default_value = "/etc/lm-sensors-web/config.json")]
         config: String,
     },
-
-    /// Uninstall the systemd service
+    /// Stop, disable, and remove the systemd unit file.
     UninstallService {
         #[arg(long)]
         user: bool,
     },
-
-    /// Start the service
+    /// Start the service via `systemctl start`.
     StartService {
         #[arg(long)]
         user: bool,
     },
-
-    /// Stop the service
+    /// Stop the service via `systemctl stop`.
     StopService {
         #[arg(long)]
         user: bool,
     },
-
-    /// Restart the service
+    /// Restart the service via `systemctl restart`.
     RestartService {
         #[arg(long)]
         user: bool,
     },
-
-    /// Show service status
+    /// Show service status via `systemctl status`.
     StatusService,
 }
 
+/// Logging levels matching `tracing` levels.
 #[derive(Debug, Clone, Copy, Default, ValueEnum)]
 pub enum LogLevel {
     Error,
@@ -85,6 +94,7 @@ pub enum LogLevel {
     Trace,
 }
 
+/// Map enum variants to lowercase strings for `tracing` configuration.
 impl std::fmt::Display for LogLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -100,41 +110,46 @@ impl std::fmt::Display for LogLevel {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::CommandFactory;
 
+    /// Default values when no arguments are passed.
     #[test]
     fn test_cli_no_args() {
-        let cli = Cli::parse_from(["lm-sensors-api"]);
+        let cli = Cli::parse_from(["lm-sensors-web"]);
         assert!(cli.command.is_none());
         assert_eq!(cli.host, "0.0.0.0");
         assert_eq!(cli.port, 47890);
     }
 
+    /// Host and port overrides.
     #[test]
     fn test_cli_host_port() {
-        let cli = Cli::parse_from(["lm-sensors-api", "-H", "127.0.0.1", "-p", "9090"]);
+        let cli = Cli::parse_from(["lm-sensors-web", "-H", "127.0.0.1", "-p", "9090"]);
         assert_eq!(cli.host, "127.0.0.1");
         assert_eq!(cli.port, 9090);
     }
 
+    /// Log-level parsing and display.
     #[test]
     fn test_cli_log_level() {
-        let cli = Cli::parse_from(["lm-sensors-api", "--log-level", "debug"]);
+        let cli = Cli::parse_from(["lm-sensors-web", "--log-level", "debug"]);
         assert_eq!(cli.log_level.to_string(), "debug");
     }
 
+    /// Config path flag.
     #[test]
     fn test_cli_config() {
-        let cli = Cli::parse_from(["lm-sensors-api", "-c", "/tmp/c.json"]);
+        let cli = Cli::parse_from(["lm-sensors-web", "-c", "/tmp/c.json"]);
         assert_eq!(cli.config.as_deref(), Some("/tmp/c.json"));
     }
 
+    /// Install subcommand recognition.
     #[test]
     fn test_cli_install() {
-        let cli = Cli::parse_from(["lm-sensors-api", "install-service"]);
+        let cli = Cli::parse_from(["lm-sensors-web", "install-service"]);
         assert!(matches!(cli.command, Some(Command::InstallService { .. })));
     }
 
+    /// LogLevel::Display round-trip.
     #[test]
     fn test_log_level_display() {
         assert_eq!(LogLevel::Trace.to_string(), "trace");
