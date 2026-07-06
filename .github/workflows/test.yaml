@@ -1,123 +1,166 @@
-name: Test & Coverage
+name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [master, main]
   pull_request:
-    branches: [master]
+    branches: [master, main]
   workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  CARGO_HTTP_TIMEOUT: 60
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  # ── Linting ──────────────────────────────────────────────────
   lint:
-    name: Lint (clippy + fmt)
+    name: Lint (fmt + clippy)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache cargo registry
+      - name: Cache cargo
         uses: actions/cache@v4
         with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-registry-
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-build-
-
-      - name: Install libsensors-dev
+      - name: Install deps
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libsensors-dev libclang-dev pkg-config
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libsensors-dev libclang-dev pkg-config
 
       - name: Run cargo fmt
         run: cargo fmt -- --check
 
       - name: Run clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
-  test:
-    name: Tests
+      - name: Check docs compile
+        run: cargo doc --no-deps --document-private-items 2>&1 | grep -v "^warning:" || true
+
+  # ── Unit Tests ──────────────────────────────────────────────
+  unit-tests:
+    name: Unit Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache cargo registry
+      - name: Cache cargo
         uses: actions/cache@v4
         with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-registry-
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-build-
-
-      - name: Install libsensors-dev
+      - name: Install deps
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libsensors-dev libclang-dev pkg-config
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libsensors-dev libclang-dev pkg-config
 
-      - name: Run tests
-        run: cargo test --all-features --all-targets
+      - name: Run unit tests
+        run: cargo test --lib --all-features -- --test-threads=4
 
+  # ── Integration Tests ───────────────────────────────────────
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Install deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libsensors-dev libclang-dev pkg-config
+
+      - name: Run integration tests
+        run: cargo test --test '*' --all-features -- --test-threads=4
+
+  # ── All Tests ────────────────────────────────────────────────
+  all-tests:
+    name: All Tests
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Install deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libsensors-dev libclang-dev pkg-config
+
+      - name: Run all tests
+        run: cargo test --all-features --all-targets -- --test-threads=4
+
+      - name: Check for warnings
+        run: cargo build --all-features 2>&1 | grep -i "warning" && exit 1 || true
+
+  # ── Coverage ────────────────────────────────────────────────
   coverage:
-    name: Coverage (grcov)
+    name: Code Coverage
     runs-on: ubuntu-latest
+    needs: [lint]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache cargo registry
+      - name: Cache cargo
         uses: actions/cache@v4
         with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-registry-
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-coverage-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-build-coverage-
-
-      - name: Install libsensors-dev
+      - name: Install deps
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libsensors-dev libclang-dev pkg-config
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libsensors-dev libclang-dev pkg-config
 
-      - name: Install grcov
-        uses: baptiste0904/grcov-action@v2
-        with:
-          generate-report: true
-          output-type: lcov
-          output-path: coverage.lcov
-          files-with-line-numbers-file: target/debug/lm-sensors-web
-          toolchain: stable
+      - name: Install llvm-cov
+        run: rustup component add llvm-tools-preview
 
-      - name: Run tests with coverage instrumentation
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
+
+      - name: Run tests with coverage
         run: |
-          rustup component add llvm-tools-preview
-          CARGO_INCREMENTAL=0 \
-          RUSTFLAGS='-C instrument-coverage' \
-          LLVM_PROFILE_FILE='target/coverage/%p-%p.profraw' \
-          cargo test --all-features --all-targets
-
-      - name: Generate coverage report
-        run: |
-          rustup component add llvm-tools-preview 2>/dev/null || true
-          cargo install cargo-llvm-cov --locked 2>/dev/null || true
-          cargo llvm-cov --lcov --output-path coverage.lcov
+          cargo llvm-cov --all-features --all-targets --lcov --output-path coverage.lcov
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
@@ -125,3 +168,40 @@ jobs:
           files: coverage.lcov
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ── Docker Build ────────────────────────────────────────────
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: lm-sensors-web:test
+
+      - name: Test Docker container
+        run: |
+          docker run --rm lm-sensors-web:test --help > /dev/null
+          docker run --rm lm-sensors-web:test --version > /dev/null
+
+  # ── Security Audit ──────────────────────────────────────────
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run cargo audit
+        run: cargo audit

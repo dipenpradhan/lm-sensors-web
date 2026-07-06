@@ -9,7 +9,35 @@
     "path": "/ws/sensors",
     "broadcast_interval_ms": 2000
   },
-  "webhooks": [],
+  "webhooks": [
+    {
+      "name": "temp-alert",
+      "url": "http://localhost:9090/alerts",
+      "method": "POST",
+      "content_type": "application/json",
+      "trigger": "temperature",
+      "condition": {
+        "above_celsius": 80,
+        "below_celsius": 10
+      },
+      "interval_seconds": 30,
+      "headers": {
+        "X-API-Key": "your-api-key-here"
+      }
+    },
+    {
+      "name": "heartbeat",
+      "url": "http://localhost:9090/heartbeat",
+      "trigger": "always",
+      "interval_seconds": 60
+    },
+    {
+      "name": "temp-changes",
+      "url": "http://localhost:9090/changes",
+      "trigger": "on_change",
+      "interval_seconds": 15
+    }
+  ],
   "sensors": {
     "refresh_interval_ms": 5000
   }

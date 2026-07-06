@@ -154,4 +154,82 @@ mod tests {
     fn test_log_level_display() {
         assert_eq!(LogLevel::Trace.to_string(), "trace");
     }
+
+    /// Start subcommand parsing.
+    #[test]
+    fn test_cli_start_subcommand() {
+        let cli = Cli::parse_from(["lm-sensors-web", "start"]);
+        assert!(matches!(cli.command, Some(Command::Start { .. })));
+    }
+
+    /// Uninstall subcommand parsing.
+    #[test]
+    fn test_cli_uninstall() {
+        let cli = Cli::parse_from(["lm-sensors-web", "uninstall-service"]);
+        assert!(matches!(cli.command, Some(Command::UninstallService { .. })));
+    }
+
+    /// Service control subcommands.
+    #[test]
+    fn test_cli_service_control() {
+        for subcmd in ["start-service", "stop-service", "restart-service"] {
+            let cli = Cli::parse_from(["lm-sensors-web", subcmd]);
+            assert!(matches!(
+                cli.command,
+                Some(Command::StartService { .. })
+                    | Some(Command::StopService { .. })
+                    | Some(Command::RestartService { .. })
+            ), "Expected service control command for '{}'", subcmd);
+        }
+    }
+
+    /// Status service subcommand.
+    #[test]
+    fn test_cli_status_service() {
+        let cli = Cli::parse_from(["lm-sensors-web", "status-service"]);
+        assert!(matches!(cli.command, Some(Command::StatusService)));
+    }
+
+    /// LogLevel Default is Info.
+    #[test]
+    fn test_log_level_default() {
+        let default = LogLevel::default();
+        assert_eq!(default.to_string(), "info");
+    }
+
+    /// All LogLevel variants serialise to correct strings.
+    #[test]
+    fn test_all_log_levels_display() {
+        assert_eq!(LogLevel::Error.to_string(), "error");
+        assert_eq!(LogLevel::Warn.to_string(), "warn");
+        assert_eq!(LogLevel::Info.to_string(), "info");
+        assert_eq!(LogLevel::Debug.to_string(), "debug");
+        assert_eq!(LogLevel::Trace.to_string(), "trace");
+    }
+
+    /// Install service with --user flag.
+    #[test]
+    fn test_cli_install_with_user() {
+        let cli = Cli::parse_from(["lm-sensors-web", "install-service", "--user"]);
+        match cli.command {
+            Some(Command::InstallService { user, .. }) => assert!(user),
+            _ => panic!("Expected InstallService"),
+        }
+    }
+
+    /// Combined flags: host, port, config, log-level.
+    #[test]
+    fn test_cli_all_flags() {
+        let cli = Cli::parse_from([
+            "lm-sensors-web",
+            "-H", "10.0.0.1",
+            "-p", "8080",
+            "-c", "/etc/app.json",
+            "--log-level", "trace",
+        ]);
+        assert_eq!(cli.host, "10.0.0.1");
+        assert_eq!(cli.port, 8080);
+        assert_eq!(cli.config.as_deref(), Some("/etc/app.json"));
+        assert_eq!(cli.log_level.to_string(), "trace");
+    }
 }

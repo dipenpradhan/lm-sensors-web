@@ -19,6 +19,12 @@
 //! - No C library mutation occurs during iteration
 //!
 //! This allows sharing via `Arc<RwLock<SafeLMSensors>>` across tokio threads.
+//!
+//! # Testing
+//!
+//! Unit tests cover the data types (serialisation, round-trips, edge cases).
+//! `SensorManager` tests require a live `libsensors` environment and are
+//! integration-level — see `tests/sensor_manager.rs`.
 
 use std::sync::{RwLock, Arc};
 
@@ -258,6 +264,8 @@ fn unit_str(v: &lm_sensors::Value) -> String {
 mod tests {
     use super::data::*;
 
+    // ── SensorReadings ──────────────────────────────────────────────
+
     /// Verify SensorReadings serialises to JSON with correct keys.
     #[test]
     fn test_readings_serde() {
@@ -290,5 +298,168 @@ mod tests {
         let r = SensorReadings { devices: vec![] };
         let j = serde_json::to_string(&r).unwrap();
         assert!(j.contains("devices"));
+    }
+
+    /// Multiple devices with multiple features serialise correctly.
+    #[test]
+    fn test_multiple_devices_serialization() {
+        let r = SensorReadings {
+            devices: vec![
+                DeviceReadings {
+                    device: Device { name: "cpu".into(), bus: "ISA".into(), path: None },
+                    features: vec![FeatureInfo {
+                        name: "temp1".into(),
+                        sub_features: vec![SubFeatureInfo {
+                            name: "temp1_input".into(),
+                            value: Some(45.0),
+                            unit: Some("°C".into()),
+                        }],
+                    }],
+                },
+                DeviceReadings {
+                    device: Device { name: "gpu".into(), bus: "PCI".into(), path: None },
+                    features: vec![FeatureInfo {
+                        name: "fan1".into(),
+                        sub_features: vec![SubFeatureInfo {
+                            name: "fan1_input".into(),
+                            value: Some(1200.0),
+                            unit: Some("RPM".into()),
+                        }],
+                    }],
+                },
+            ],
+        };
+        let j = serde_json::to_string(&r).unwrap();
+        assert!(j.contains("cpu"));
+        assert!(j.contains("gpu"));
+        assert!(j.contains("45.0"));
+        assert!(j.contains("1200.0"));
+        assert!(j.contains("RPM"));
+    }
+
+    /// SensorReadings round-trip through JSON preserves all fields.
+    #[test]
+    fn test_readings_serde_roundtrip() {
+        let original = SensorReadings {
+            devices: vec![DeviceReadings {
+                device: Device {
+                    name: "coretemp".into(),
+                    bus: "ISA".into(),
+                    path: Some("/sys/class/hwmon/hwmon0".into()),
+                },
+                features: vec![FeatureInfo {
+                    name: "temp1".into(),
+                    sub_features: vec![SubFeatureInfo {
+                        name: "temp1_input".into(),
+                        value: Some(55.5),
+                        unit: Some("°C".into()),
+                    }],
+                }],
+            }],
+        };
+        let j = serde_json::to_string(&original).unwrap();
+        let parsed: SensorReadings = serde_json::from_str(&j).unwrap();
+        assert_eq!(original.devices.len(), parsed.devices.len());
+        assert_eq!(original.devices[0].device.name, parsed.devices[0].device.name);
+        assert_eq!(
+            original.devices[0].features[0].sub_features[0].value,
+            parsed.devices[0].features[0].sub_features[0].value,
+        );
+    }
+
+    // ── Device ──────────────────────────────────────────────────────
+
+    /// Device with optional path serialises to JSON correctly.
+    #[test]
+    fn test_device_with_path() {
+        let d = Device {
+            name: "test".into(),
+            bus: "ISA".into(),
+            path: Some("/sys/class/hwmon/hwmon0".into()),
+        };
+        let j = serde_json::to_string(&d).unwrap();
+        assert!(j.contains("test"));
+        assert!(j.contains("ISA"));
+        assert!(j.contains("hwmon0"));
+    }
+
+    /// Device with missing path serialises to null.
+    #[test]
+    fn test_device_without_path() {
+        let d = Device {
+            name: "test".into(),
+            bus: "ISA".into(),
+            path: None,
+        };
+        let j = serde_json::to_string(&d).unwrap();
+        assert!(j.contains("null"));
+    }
+
+    /// Clone produces independent copies.
+    #[test]
+    fn test_device_clone() {
+        let d = Device {
+            name: "cpu".into(),
+            bus: "ISA".into(),
+            path: Some("/sys/hwmon0".into()),
+        };
+        let c = d.clone();
+        assert_eq!(d.name, c.name);
+        assert_eq!(d.bus, c.bus);
+        assert_eq!(d.path, c.path);
+    }
+
+    // ── FeatureInfo ────────────────────────────────────────────────
+
+    /// FeatureInfo with empty sub_features serialises correctly.
+    #[test]
+    fn test_feature_empty_subfeatures() {
+        let f = FeatureInfo {
+            name: "test".into(),
+            sub_features: vec![],
+        };
+        let j = serde_json::to_string(&f).unwrap();
+        assert!(j.contains("test"));
+    }
+
+    // ── SubFeatureInfo ─────────────────────────────────────────────
+
+    /// SubFeatureInfo with None value and None unit serialises correctly.
+    #[test]
+    fn test_subfeature_none_values() {
+        let s = SubFeatureInfo {
+            name: "test".into(),
+            value: None,
+            unit: None,
+        };
+        let j = serde_json::to_string(&s).unwrap();
+        assert!(j.contains("test"));
+        assert!(j.contains("null"));
+    }
+
+    // ── Debug formatting ───────────────────────────────────────────
+
+    /// Debug formatting works for all data types.
+    #[test]
+    fn test_debug_formatting() {
+        let r = SensorReadings {
+            devices: vec![DeviceReadings {
+                device: Device {
+                    name: "test".into(),
+                    bus: "ISA".into(),
+                    path: None,
+                },
+                features: vec![FeatureInfo {
+                    name: "temp1".into(),
+                    sub_features: vec![SubFeatureInfo {
+                        name: "temp1_input".into(),
+                        value: Some(65.0),
+                        unit: Some("°C".into()),
+                    }],
+                }],
+            }],
+        };
+        let s = format!("{:?}", r);
+        assert!(!s.is_empty());
     }
 }

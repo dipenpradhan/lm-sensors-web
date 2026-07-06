@@ -1,195 +1,28 @@
 # lm-sensors-web
 
-Hardware sensor monitoring web application built in Rust. Exposes real-time sensor data (temperatures, voltages, fan speeds, etc.) from Linux `libsensors` via a REST API, WebSocket live-feed, and a lightweight dark-mode web dashboard.
+Hardware sensor monitoring web application built in Rust. Exposes real-time sensor data (temperatures, voltages, fan speeds) from Linux `libsensors` via REST API, WebSocket live-feed, webhooks, and a dark-mode web dashboard.
 
-![lm-sensors-web](static/app.png)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/Rust-1.70%2B-orange)](https://www.rust-lang.org)
+[![Tests](https://github.com/your-org/lm-sensors-web/actions/workflows/test.yaml/badge.svg)](https://github.com/your-org/lm-sensors-web/actions)
+
+---
 
 ## Features
 
-- **REST API** — `/api/sensors`, `/api/devices`, `/api/devices/{id}`, `/api/devices/{id}/features`, `/api/health`
-- **WebSocket** — live sensor broadcast on `/ws/sensors`
-- **Webhooks** — scheduled sensor push with triggers (`always`, `temperature`, `on-change`)
-- **Web Dashboard** — dark-mode UI with pastel-coloured sensor cards, real-time filter, collapsible grid
-- **CLI** — `--host`, `--port`, `--log-level`, `--config`, service management subcommands
-- **Docker** — multi-stage build + `docker-compose.yml`
-- **Linux Service** — systemd install/uninstall/start/stop/restart/status
+| Feature | Description |
+|---------|-------------|
+| **REST API** | Device listing, details, readings, health check |
+| **WebSocket** | Real-time sensor broadcast with auto-reconnect |
+| **Webhooks** | Scheduled HTTP push with temperature/on-change triggers |
+| **Web Dashboard** | Dark-mode UI with live filtering and sensor cards |
+| **CLI** | Full-featured CLI with service management subcommands |
+| **Systemd** | Install/manage as a Linux system service |
+| **Docker** | Multi-stage build with health checks |
+| **Hot-reload** | Update config without restarting |
+| **Testing** | 80+ unit and integration tests |
 
-## Architecture
-
-### Component diagram
-
-```dot
-// Render with: dot -Tsvg components.dot > components.svg
-// Or paste into https://dreampuf.github.io/GraphvizOnline
-
-digraph lm_sensors_web {
-  rankdir=LR;
-  node [fontname="Helvetica", fontsize=11];
-  edge [color="#7eb8da"];
-
-  // Styling
-  subgraph cluster_app {
-    label="lm-sensors-web";
-    style=filled;
-    fillcolor="#1a1b2e";
-    color="#7eb8da";
-    fontcolor=white;
-
-    CLI       [shape=box, fillcolor="#242640", fontcolor=white, label="CLI\n(clap)"];
-    Config    [shape=box, fillcolor="#242640", fontcolor=white, label="Config\n(JSON)" ];
-    Sensor    [shape=box, fillcolor="#242640", fontcolor=white, label="SensorManager\n(lm-sensors)"];
-    Router    [shape=box, fillcolor="#242640", fontcolor=white, label="Axum Router"];
-    WebSocket [shape=box, fillcolor="#242640", fontcolor=white, label="WebSocket\nbroadcast"];
-    Webhook   [shape=box, fillcolor="#242640", fontcolor=white, label="Webhook\nengine"];
-    Static    [shape=box, fillcolor="#242640", fontcolor=white, label="Static Files"];
-  }
-
-  subgraph cluster_deps {
-    label="External";
-    style=filled;
-    fillcolor="#1a1b2e";
-    color="#7eb8da";
-    fontcolor=white;
-
-    LibSensors [shape=cds, fillcolor="#2e3050", fontcolor=white, label="libsensors\n(sysfs/hwmon)"];
-    Browser    [shape=ellipse, fillcolor="#2e3050", fontcolor=white, label="Browser"];
-  }
-
-  CLI -> Config       [label="loads"];
-  CLI -> Router       [label="starts"];
-  Router -> Sensor   [label="queries"];
-  Router -> WebSocket [label="subscribes"];
-  Router -> Webhook   [label="triggers"];
-  Router -> Static    [label="serves"];
-  Router -> Config    [label="reloads"];
-  Sensor -> LibSensors [label="reads"];
-  Browser -> Router  [label="HTTP / WS"];
-  Browser -> Static  [label="GET"];
-}
-```
-
-### Request flow
-
-```dot
-// Render with: dot -Tsvg flow.dot > flow.svg
-// Or paste into https://dreampuf.github.io/GraphvizOnline
-
-digraph request_flow {
-  rankdir=TB;
-  node [shape=box, fontname="Helvetica", fontsize=10];
-  edge [color="#7eb8da"];
-
-  // REST flow
-  subgraph cluster_rest {
-    label="REST: GET /api/sensors";
-    style=filled;
-    fillcolor="#1a1b2e";
-    color="#7eb8da";
-    fontcolor=white;
-
-    R1 [fillcolor="#242640", fontcolor=white, label="Browser\nGET /api/sensors"];
-    R2 [fillcolor="#242640", fontcolor=white, label="Axum Router\nget_devices()"];
-    R3 [fillcolor="#242640", fontcolor=white, label="SensorManager\nlist_devices()"];
-    R4 [fillcolor="#2e3050", fontcolor=white, label="libsensors\nchip_iter()"];
-    R5 [fillcolor="#242640", fontcolor=white, label="200 JSON\n{ devices: [...] }"];
-
-    R1 -> R2 -> R3 -> R4;
-    R4 -> R3 -> R2 -> R5;
-  }
-
-  // WebSocket flow
-  subgraph cluster_ws {
-    label="WebSocket: /ws/sensors";
-    style=filled;
-    fillcolor="#1a1b2e";
-    color="#7eb8da";
-    fontcolor=white;
-
-    W1 [fillcolor="#242640", fontcolor=white, label="Browser\nWS upgrade"];
-    W2 [fillcolor="#242640", fontcolor=white, label="broadcast::channel\nsubscribe()"];
-    W3 [fillcolor="#242640", fontcolor=white, label="broadcast loop\n(tick every 2s)"];
-    W4 [fillcolor="#242640", fontcolor=white, label="SensorManager\nread_all()"];
-    W5 [fillcolor="#242640", fontcolor=white, label="browser\nJSON frame"];
-
-    W1 -> W2 -> W3 -> W4;
-    W4 -> W3 -> W2 -> W5;
-  }
-
-  // Auto-reconnect note
-  subgraph cluster_note {
-    label="Dashboard resilience";
-    style=filled;
-    fillcolor="#2e3050";
-    color="#7eb8da";
-    fontcolor="#c8c9e0";
-
-    N1 [fillcolor="#242640", fontcolor=white, label="WS disconnect\n→ exponential backoff"];
-    N2 [fillcolor="#242640", fontcolor=white, label="REST fallback\nGET /api/sensors every 30s"];
-  }
-}
-```
-
-### Sensor wrapper safety
-
-```dot
-// Render with: dot -Tsvg safety.dot > safety.svg
-// Or paste into https://dreampuf.github.io/GraphvizOnline
-
-digraph sensor_safety {
-  rankdir=TB;
-  node [fontname="Helvetica", fontsize=10];
-  edge [color="#7eb8da"];
-
-  // std::sync primitives
-  subgraph cluster_std {
-    label="std::sync";
-    style=filled;
-    fillcolor="#1a1b2e";
-    color="#7eb8da";
-    fontcolor=white;
-
-    Arc    [shape=doublecircle, fillcolor="#242640", fontcolor=white, label="Arc<T>"];
-    RwLock [shape=doublecircle, fillcolor="#242640", fontcolor=white, label="RwLock<T>"];
-  }
-
-  // External crate
-  subgraph cluster_external {
-    label="lm_sensors crate";
-    style=filled;
-    fillcolor="#2e3050";
-    color="#7eb8da";
-    fontcolor=white;
-
-    LMSensors [shape=box, fillcolor="#242640", fontcolor=white,
-      label="LMSensors\n(not Send + Sync)"];
-  }
-
-  // Our wrapper
-  subgraph cluster_ours {
-    label="lm-sensors-web";
-    style=filled;
-    fillcolor="#1a1b2e";
-    color="#7eb8da";
-    fontcolor=white;
-
-    Safe [shape=box, fillcolor="#242640", fontcolor=white,
-      label="SafeLMSensors\n(unsafe impl Send + Sync)"];
-
-    Manager [shape=box, fillcolor="#242640", fontcolor=white,
-      label="SensorManager\n(Arc<RwLock<SafeLMSensors>>)"];
-  }
-
-  // Safety invariant
-  Invariant [shape=note, fillcolor="#2e3050", fontcolor="#c8c9e0",
-    label="Safety invariant:\n• RwLock guard = exclusive read\n• chip_iter() never mutates\n• Multiple tasks share Arc"];
-
-  Manager -> Arc  [label="owns"];
-  Arc   -> RwLock [label="wraps"];
-  RwLock -> Safe [label="protects"];
-  Safe  -> LMSensors [label="contains"];
-  Manager -> Invariant;
-}
-```
+---
 
 ## Quick Start
 
@@ -204,28 +37,35 @@ cargo build --release
 open http://localhost:47890
 ```
 
-## CLI
+---
 
-```
-lm-sensors-web [FLAGS] [SUBCOMMAND]
+## Documentation
 
-Flags:
-  -H, --host <HOST>        Bind address (default: 0.0.0.0)
-  -p, --port <PORT>        Listen port (default: 47890)
-  -l, --log-level <LEVEL>  Logging level (info|debug|trace|warn|error)
-  -c, --config <PATH>      Path to config.json
-  -h, --help               Print help
+| Document | Description |
+|----------|-------------|
+| [User Guide](docs/USER_GUIDE.md) | Complete usage guide with examples |
+| [API Reference](docs/API_REFERENCE.md) | All endpoints, schemas, and examples |
+| [Deployment Guide](docs/DEPLOYMENT.md) | Production deployment strategies |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and solutions |
+| [Testing Guide](docs/TESTING.md) | Test suite overview and best practices |
 
-Subcommands:
-  install-service          Install as systemd service
-  uninstall-service        Remove systemd service
-  start-service            Start service
-  stop-service             Stop service
-  restart-service          Restart service
-  status-service           Show service status
-```
+---
 
-## Config (`config.json`)
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/` | Web dashboard |
+| `GET` | `/api/health` | Health check / liveness probe |
+| `POST` | `/api/reload` | Hot-reload configuration |
+| `GET` | `/api/devices` | List all sensor devices |
+| `GET` | `/api/devices/{id}` | Get device by name |
+| `GET` | `/api/devices/{id}/features` | Get device readings |
+| `GET` | `/ws/sensors` | WebSocket live feed |
+
+---
+
+## Configuration
 
 ```json
 {
@@ -243,10 +83,8 @@ Subcommands:
     {
       "name": "temp-alert",
       "url": "http://localhost:9090/alerts",
-      "method": "POST",
-      "content_type": "application/json",
       "trigger": "temperature",
-      "condition": { "above_celsius": 80 },
+      "condition": {"above_celsius": 80},
       "interval_seconds": 30
     }
   ],
@@ -256,28 +94,77 @@ Subcommands:
 }
 ```
 
+---
+
+## CLI Reference
+
+```bash
+# Start server with defaults
+lm-sensors-web
+
+# Custom host, port, config, log level
+lm-sensors-web -H 127.0.0.1 -p 8080 -c config.json --log-level debug
+
+# Service management
+lm-sensors-web install-service --binary /usr/local/bin/lm-sensors-web --config /etc/lm-sensors-web/config.json
+lm-sensors-web start-service
+lm-sensors-web status-service
+lm-sensors-web stop-service
+lm-sensors-web uninstall-service
+```
+
+---
+
 ## Docker
 
 ```bash
+# Build and run
 docker compose up -d
+
+# Or standalone
+docker run -p 47890:47890 -v $(pwd)/config.json:/app/config.json:ro lm-sensors-web:latest
 ```
 
-## API Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/health` | Health check |
-| `POST` | `/api/reload` | Hot-reload config |
-| `GET` | `/api/devices` | List all devices |
-| `GET` | `/api/devices/{device_id}` | Device details |
-| `GET` | `/api/devices/{device_id}/features` | Device readings |
-| `GET` | `/ws/sensors` | WebSocket live feed |
+---
 
 ## Testing
 
 ```bash
+# Run all tests
 cargo test
+
+# Unit tests only
+cargo test --lib
+
+# Specific test file
+cargo test --test api_endpoints
 ```
+
+---
+
+## Project Structure
+
+```
+src/
+  main.rs          — Entry point (CLI + server startup)
+  lib.rs           — Public module re-exports
+  api/             — REST route handlers
+    health.rs      — GET /api/health, POST /api/reload
+    sensors.rs     — GET /api/devices/*
+  cli.rs           — clap CLI parsing
+  config.rs        — JSON config schema + loading
+  sensors.rs       — lm-sensors wrapper + data types
+  server.rs        — Axum router construction
+  service.rs       — systemd service management
+  state.rs         — Shared application state
+  webhook.rs       — Webhook dispatch engine
+  websocket.rs     — WebSocket broadcast server
+static/            — Frontend assets (HTML/CSS/JS)
+tests/             — Integration tests
+docs/              — Documentation
+```
+
+---
 
 ## License
 

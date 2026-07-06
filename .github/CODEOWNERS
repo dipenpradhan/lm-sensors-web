@@ -1,0 +1,34 @@
+# Code Owners — lm-sensors-web
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything
+* @maintainers
+
+# Documentation
+/docs/** @docs-team
+
+# CI/CD
+.github/** @devops-team
+
+# Configuration
+config.example.json @maintainers
+Cargo.toml @maintainers
+
+# Source code by module
+src/api/** @api-team
+src/cli.rs @cli-team
+src/config.rs @core-team
+src/main.rs @core-team
+src/sensors.rs @core-team
+src/server.rs @core-team
+src/service.rs @platform-team
+src/state.rs @core-team
+src/webhook.rs @api-team
+src/websocket.rs @api-team
+
+# Tests
+tests/** @testing-team
+
+# Docker
+Dockerfile @devops-team
+docker-compose.yml @devops-team

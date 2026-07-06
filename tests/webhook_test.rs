@@ -1,8 +1,17 @@
-// Integration tests for webhook configuration and sensor data
+//! # Webhook configuration integration tests
+//!
+//! Tests webhook config serialization and sensor data used by webhooks.
+//!
+//! # Running
+//!
+//! ```bash
+//! cargo test --test webhook_test
+//! ```
 
 use lm_sensors_web::config::{WebhookConfig, WebhookTrigger, WebhookCondition};
 use lm_sensors_web::sensors::{Device, DeviceReadings, FeatureInfo, SensorReadings, SubFeatureInfo};
 
+/// WebhookConfig with temperature trigger serializes correctly.
 #[test]
 fn test_webhook_config_serde() {
     let wh = WebhookConfig {
@@ -24,6 +33,7 @@ fn test_webhook_config_serde() {
     assert!(j.contains("80"));
 }
 
+/// Sensor readings contain expected temperature values.
 #[test]
 fn test_sensor_readings_temps() {
     let readings = SensorReadings {
@@ -64,6 +74,7 @@ fn test_sensor_readings_temps() {
     assert!((avg - 72.5).abs() < 0.01);
 }
 
+/// WebhookConfig round-trips through JSON correctly.
 #[test]
 fn test_webhook_config_roundtrip() {
     let original = WebhookConfig {
@@ -85,4 +96,32 @@ fn test_webhook_config_roundtrip() {
     assert_eq!(original.name, parsed.name);
     assert_eq!(original.url, parsed.url);
     assert_eq!(original.interval_seconds, parsed.interval_seconds);
+}
+
+/// All webhook trigger types serialize to correct strings.
+#[test]
+fn test_trigger_types_serialization() {
+    let triggers = vec![
+        (WebhookTrigger::Always, "always"),
+        (WebhookTrigger::Temperature, "temperature"),
+        (WebhookTrigger::OnChange, "on_change"),
+    ];
+
+    for (trigger, expected) in triggers {
+        let j = serde_json::to_string(&trigger).unwrap();
+        assert!(j.contains(expected), "Expected '{}' in {}", expected, j);
+    }
+}
+
+/// WebhookCondition serializes and deserializes correctly.
+#[test]
+fn test_webhook_condition_roundtrip() {
+    let original = WebhookCondition {
+        above_celsius: Some(90.0),
+        below_celsius: Some(10.0),
+    };
+    let j = serde_json::to_string(&original).unwrap();
+    let parsed: WebhookCondition = serde_json::from_str(&j).unwrap();
+    assert_eq!(original.above_celsius, parsed.above_celsius);
+    assert_eq!(original.below_celsius, parsed.below_celsius);
 }

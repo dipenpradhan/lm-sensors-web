@@ -99,17 +99,11 @@ async fn run_server(cli: Cli, config: Config) -> Result<(), String> {
     info!("Starting lm-sensors-web on {}:{}", config.server.host, config.server.port);
 
     // Initialize sensor manager.
-    // If libsensors is not available, log a warning and continue with defaults.
-    // The server still serves health checks and the frontend.
-    let sensor_manager = Arc::new(
-        SensorManager::new().unwrap_or_else(|e| {
-            info!("Sensor init failed: {} (continuing without sensor data)", e);
-            // Return a best-effort manager — callers handle empty results.
-            SensorManager::new().unwrap_or_else(|_| {
-                panic!("Cannot recover from sensor init failure: {}", e);
-            })
-        }),
-    );
+    // If libsensors is not available, exit with a clear error.
+    // A sensor-monitoring server without sensor access has no purpose.
+    let sensor_manager = Arc::new(SensorManager::new().map_err(|e| {
+        format!("Failed to initialize sensor subsystem: {}", e)
+    })?);
 
     // Wrap config in an async RwLock for runtime reload support.
     let config_rwlock = Arc::new(tokio::sync::RwLock::new(config.clone()));
