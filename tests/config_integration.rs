@@ -9,8 +9,8 @@
 //! ```
 
 use lm_sensors_web::config::{
-    Config, ServerConfig, SensorsConfig, WebhookConfig, WebhookCondition,
-    WebhookTrigger, WebSocketConfig,
+    Config, SensorsConfig, ServerConfig, WebSocketConfig, WebhookCondition, WebhookConfig,
+    WebhookTrigger,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -76,7 +76,8 @@ fn test_load_minimal_json() {
 /// Load config with partial overrides.
 #[test]
 fn test_load_partial_config() {
-    let json = r#"{"server":{"host":"127.0.0.1","port":9090},"webhooks":[],"websocket":{},"sensors":{}}"#;
+    let json =
+        r#"{"server":{"host":"127.0.0.1","port":9090},"webhooks":[],"websocket":{},"sensors":{}}"#;
     let f = NamedTempFile::new().unwrap();
     fs::write(&f, json).unwrap();
     let c = Config::load(f.path()).unwrap();
@@ -101,7 +102,8 @@ fn test_load_websocket_override() {
 /// Load config with sensor refresh override.
 #[test]
 fn test_load_sensors_override() {
-    let json = r#"{"server":{},"websocket":{},"webhooks":[],"sensors":{"refresh_interval_ms":10000}}"#;
+    let json =
+        r#"{"server":{},"websocket":{},"webhooks":[],"sensors":{"refresh_interval_ms":10000}}"#;
     let f = NamedTempFile::new().unwrap();
     fs::write(&f, json).unwrap();
     let c = Config::load(f.path()).unwrap();
@@ -173,8 +175,14 @@ fn test_webhook_with_headers() {
     }
     "#;
     let wh: WebhookConfig = serde_json::from_str(json).unwrap();
-    assert_eq!(wh.headers.get("X-API-Key").map(|s| s.as_str()), Some("secret"));
-    assert_eq!(wh.headers.get("Authorization").map(|s| s.as_str()), Some("Bearer token"));
+    assert_eq!(
+        wh.headers.get("X-API-Key").map(|s| s.as_str()),
+        Some("secret")
+    );
+    assert_eq!(
+        wh.headers.get("Authorization").map(|s| s.as_str()),
+        Some("Bearer token")
+    );
 }
 
 /// WebhookCondition serializes and deserializes correctly.

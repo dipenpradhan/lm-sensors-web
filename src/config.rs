@@ -122,23 +122,51 @@ pub struct SensorsConfig {
 
 // ── Default value factories for serde ──────────────────────────────
 
-fn default_server() -> ServerConfig  { ServerConfig::default() }
-fn default_websocket() -> WebSocketConfig { WebSocketConfig::default() }
-fn default_webhooks() -> Vec<WebhookConfig> { Vec::new() }
-fn default_sensors() -> SensorsConfig { SensorsConfig::default() }
+fn default_server() -> ServerConfig {
+    ServerConfig::default()
+}
+fn default_websocket() -> WebSocketConfig {
+    WebSocketConfig::default()
+}
+fn default_webhooks() -> Vec<WebhookConfig> {
+    Vec::new()
+}
+fn default_sensors() -> SensorsConfig {
+    SensorsConfig::default()
+}
 
-fn default_host() -> String { "0.0.0.0".into() }
-fn default_port() -> u16 { 47890 }
-fn default_log_level() -> String { "info".into() }
+fn default_host() -> String {
+    "0.0.0.0".into()
+}
+fn default_port() -> u16 {
+    47890
+}
+fn default_log_level() -> String {
+    "info".into()
+}
 
-fn default_ws_enabled() -> bool { true }
-fn default_ws_path() -> String { "/ws/sensors".into() }
-fn default_broadcast_interval_ms() -> u64 { 2000 }
+fn default_ws_enabled() -> bool {
+    true
+}
+fn default_ws_path() -> String {
+    "/ws/sensors".into()
+}
+fn default_broadcast_interval_ms() -> u64 {
+    2000
+}
 
-fn default_method() -> String { "POST".into() }
-fn default_content_type() -> String { "application/json".into() }
-fn default_interval_seconds() -> u64 { 30 }
-fn default_refresh_interval_ms() -> u64 { 5000 }
+fn default_method() -> String {
+    "POST".into()
+}
+fn default_content_type() -> String {
+    "application/json".into()
+}
+fn default_interval_seconds() -> u64 {
+    30
+}
+fn default_refresh_interval_ms() -> u64 {
+    5000
+}
 
 /// Built-in defaults when no config file is provided.
 impl Default for Config {

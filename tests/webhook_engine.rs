@@ -9,7 +9,7 @@
 //! cargo test --test webhook_engine
 //! ```
 
-use lm_sensors_web::config::{WebhookConfig, WebhookCondition, WebhookTrigger};
+use lm_sensors_web::config::{WebhookCondition, WebhookConfig, WebhookTrigger};
 use lm_sensors_web::sensors::{
     Device, DeviceReadings, FeatureInfo, SensorReadings, SubFeatureInfo,
 };
@@ -39,7 +39,11 @@ fn test_always_trigger_fires() {
 fn test_temperature_trigger_above_fires() {
     let readings = SensorReadings {
         devices: vec![DeviceReadings {
-            device: Device { name: "test".into(), bus: "ISA".into(), path: None },
+            device: Device {
+                name: "test".into(),
+                bus: "ISA".into(),
+                path: None,
+            },
             features: vec![FeatureInfo {
                 name: "temp1".into(),
                 sub_features: vec![SubFeatureInfo {
@@ -50,7 +54,10 @@ fn test_temperature_trigger_above_fires() {
             }],
         }],
     };
-    let cond = WebhookCondition { above_celsius: Some(80.0), below_celsius: None };
+    let cond = WebhookCondition {
+        above_celsius: Some(80.0),
+        below_celsius: None,
+    };
     // Manually check: 90 > 80 → should fire
     let fires = check_temperature_condition(&readings, &cond);
     assert!(fires);
@@ -61,7 +68,11 @@ fn test_temperature_trigger_above_fires() {
 fn test_temperature_trigger_above_no_fire() {
     let readings = SensorReadings {
         devices: vec![DeviceReadings {
-            device: Device { name: "test".into(), bus: "ISA".into(), path: None },
+            device: Device {
+                name: "test".into(),
+                bus: "ISA".into(),
+                path: None,
+            },
             features: vec![FeatureInfo {
                 name: "temp1".into(),
                 sub_features: vec![SubFeatureInfo {
@@ -72,7 +83,10 @@ fn test_temperature_trigger_above_no_fire() {
             }],
         }],
     };
-    let cond = WebhookCondition { above_celsius: Some(80.0), below_celsius: None };
+    let cond = WebhookCondition {
+        above_celsius: Some(80.0),
+        below_celsius: None,
+    };
     // 70 is not > 80 → should not fire
     let fires = check_temperature_condition(&readings, &cond);
     assert!(!fires);
@@ -83,7 +97,11 @@ fn test_temperature_trigger_above_no_fire() {
 fn test_temperature_trigger_below_fires() {
     let readings = SensorReadings {
         devices: vec![DeviceReadings {
-            device: Device { name: "test".into(), bus: "ISA".into(), path: None },
+            device: Device {
+                name: "test".into(),
+                bus: "ISA".into(),
+                path: None,
+            },
             features: vec![FeatureInfo {
                 name: "temp1".into(),
                 sub_features: vec![SubFeatureInfo {
@@ -94,7 +112,10 @@ fn test_temperature_trigger_below_fires() {
             }],
         }],
     };
-    let cond = WebhookCondition { above_celsius: None, below_celsius: Some(40.0) };
+    let cond = WebhookCondition {
+        above_celsius: None,
+        below_celsius: Some(40.0),
+    };
     // 30 < 40 → should fire
     let fires = check_temperature_condition(&readings, &cond);
     assert!(fires);
@@ -105,7 +126,11 @@ fn test_temperature_trigger_below_fires() {
 fn test_temperature_trigger_both_thresholds() {
     let readings = SensorReadings {
         devices: vec![DeviceReadings {
-            device: Device { name: "test".into(), bus: "ISA".into(), path: None },
+            device: Device {
+                name: "test".into(),
+                bus: "ISA".into(),
+                path: None,
+            },
             features: vec![FeatureInfo {
                 name: "temp1".into(),
                 sub_features: vec![
@@ -123,7 +148,10 @@ fn test_temperature_trigger_both_thresholds() {
             }],
         }],
     };
-    let cond = WebhookCondition { above_celsius: Some(90.0), below_celsius: Some(30.0) };
+    let cond = WebhookCondition {
+        above_celsius: Some(90.0),
+        below_celsius: Some(30.0),
+    };
     // 95 > 90 (above fires) OR 25 < 30 (below fires)
     let fires = check_temperature_condition(&readings, &cond);
     assert!(fires);
@@ -134,7 +162,11 @@ fn test_temperature_trigger_both_thresholds() {
 fn test_on_change_trigger_fires() {
     let readings = SensorReadings {
         devices: vec![DeviceReadings {
-            device: Device { name: "test".into(), bus: "ISA".into(), path: None },
+            device: Device {
+                name: "test".into(),
+                bus: "ISA".into(),
+                path: None,
+            },
             features: vec![FeatureInfo {
                 name: "temp1".into(),
                 sub_features: vec![SubFeatureInfo {
@@ -179,7 +211,11 @@ fn test_on_change_trigger_first_reading() {
 fn test_webhook_payload_structure() {
     let readings = SensorReadings {
         devices: vec![DeviceReadings {
-            device: Device { name: "test".into(), bus: "ISA".into(), path: None },
+            device: Device {
+                name: "test".into(),
+                bus: "ISA".into(),
+                path: None,
+            },
             features: vec![FeatureInfo {
                 name: "temp1".into(),
                 sub_features: vec![SubFeatureInfo {
@@ -256,7 +292,12 @@ fn test_trigger_serialization() {
         (WebhookTrigger::OnChange, "on_change"),
     ] {
         let json = serde_json::to_string(&trigger).unwrap();
-        assert!(json.contains(expected_str), "Expected '{}' in {}", expected_str, json);
+        assert!(
+            json.contains(expected_str),
+            "Expected '{}' in {}",
+            expected_str,
+            json
+        );
     }
 }
 
@@ -292,10 +333,7 @@ fn test_webhook_config_full_roundtrip() {
 // ── Helper Functions ───────────────────────────────────────────────
 
 /// Check if a temperature condition is met (same logic as webhook.rs).
-fn check_temperature_condition(
-    readings: &SensorReadings,
-    cond: &WebhookCondition,
-) -> bool {
+fn check_temperature_condition(readings: &SensorReadings, cond: &WebhookCondition) -> bool {
     for dev in &readings.devices {
         for feat in &dev.features {
             for sub in &feat.sub_features {

@@ -24,5 +24,5 @@ pub mod sensors;
 pub mod server;
 pub mod service;
 pub mod state;
-pub mod websocket;
 pub mod webhook;
+pub mod websocket;

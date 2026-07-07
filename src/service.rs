@@ -147,7 +147,8 @@ mod tests {
     /// Verify the generated unit file contains all required sections.
     #[test]
     fn test_unit_file() {
-        let u = ServiceManager::unit_file("/usr/bin/lm-sensors-web", "/etc/lm-sensors-web/config.json");
+        let u =
+            ServiceManager::unit_file("/usr/bin/lm-sensors-web", "/etc/lm-sensors-web/config.json");
         assert!(u.contains("[Unit]"));
         assert!(u.contains("[Service]"));
         assert!(u.contains("[Install]"));

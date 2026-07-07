@@ -21,7 +21,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
 use crate::api::health::{health, reload_config};
-use crate::api::sensors::{get_devices, get_device, get_device_features};
+use crate::api::sensors::{get_device, get_device_features, get_devices};
 use crate::state::AppState;
 use crate::websocket::WebSocketServer;
 
@@ -49,7 +49,10 @@ pub fn create_router(
         // Get a specific device by partial name match.
         .route("/api/devices/{device_id}", axum::routing::get(get_device))
         // Get a device with all its features and current readings.
-        .route("/api/devices/{device_id}/features", axum::routing::get(get_device_features))
+        .route(
+            "/api/devices/{device_id}/features",
+            axum::routing::get(get_device_features),
+        )
         // Share application state across all routes above.
         .with_state(state.clone());
 

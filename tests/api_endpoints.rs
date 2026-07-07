@@ -16,7 +16,6 @@
 //! cargo test --test api_endpoints
 //! ```
 
-use lm_sensors_web::config::{Config, WebhookConfig, WebhookCondition, WebhookTrigger};
 use lm_sensors_web::sensors::{
     Device, DeviceReadings, FeatureInfo, SensorReadings, SubFeatureInfo,
 };
@@ -57,8 +56,16 @@ fn test_health_json_valid() {
 #[test]
 fn test_get_devices_response_schema() {
     let devices = vec![
-        Device { name: "coretemp".into(), bus: "ISA".into(), path: Some("/sys/class/hwmon/hwmon0".into()) },
-        Device { name: "acpitz".into(), bus: "ISA".into(), path: None },
+        Device {
+            name: "coretemp".into(),
+            bus: "ISA".into(),
+            path: Some("/sys/class/hwmon/hwmon0".into()),
+        },
+        Device {
+            name: "acpitz".into(),
+            bus: "ISA".into(),
+            path: None,
+        },
     ];
     let response = serde_json::json!({ "devices": devices });
     let json = serde_json::to_string(&response).unwrap();
@@ -215,19 +222,21 @@ fn test_websocket_broadcast_payload_schema() {
 #[test]
 fn test_full_api_response_cycle() {
     // Build a full sensor response
-    let devices = vec![
-        DeviceReadings {
-            device: Device { name: "cpu".into(), bus: "ISA".into(), path: Some("/sys/hwmon0".into()) },
-            features: vec![FeatureInfo {
-                name: "temp1".into(),
-                sub_features: vec![SubFeatureInfo {
-                    name: "temp1_input".into(),
-                    value: Some(42.0),
-                    unit: Some("°C".into()),
-                }],
-            }],
+    let devices = vec![DeviceReadings {
+        device: Device {
+            name: "cpu".into(),
+            bus: "ISA".into(),
+            path: Some("/sys/hwmon0".into()),
         },
-    ];
+        features: vec![FeatureInfo {
+            name: "temp1".into(),
+            sub_features: vec![SubFeatureInfo {
+                name: "temp1_input".into(),
+                value: Some(42.0),
+                unit: Some("°C".into()),
+            }],
+        }],
+    }];
     let readings = SensorReadings { devices };
 
     // Serialize
@@ -239,7 +248,10 @@ fn test_full_api_response_cycle() {
     // Verify
     assert_eq!(parsed.devices.len(), 1);
     assert_eq!(parsed.devices[0].device.name, "cpu");
-    assert_eq!(parsed.devices[0].features[0].sub_features[0].value, Some(42.0));
+    assert_eq!(
+        parsed.devices[0].features[0].sub_features[0].value,
+        Some(42.0)
+    );
 }
 
 /// Verify JSON field ordering is stable (serde preserves field order).

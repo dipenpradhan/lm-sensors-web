@@ -8,8 +8,8 @@
 //! cargo test --test ws_test
 //! ```
 
-use tokio::sync::broadcast;
 use std::time::Duration;
+use tokio::sync::broadcast;
 
 /// Single subscriber receives messages correctly.
 #[tokio::test]
@@ -72,8 +72,8 @@ async fn test_broadcast_channel_capacity() {
     let result = rx.recv().await;
     // First receive might succeed or get lagged
     match result {
-        Ok(_) => {},
-        Err(broadcast::error::RecvError::Lagged(_)) => {},
+        Ok(_) => {}
+        Err(broadcast::error::RecvError::Lagged(_)) => {}
         Err(_) => panic!("Unexpected error"),
     }
 }
@@ -82,7 +82,7 @@ async fn test_broadcast_channel_capacity() {
 #[tokio::test]
 async fn test_broadcast_no_history() {
     let (tx, _) = broadcast::channel::<String>(10);
-    tx.send("past_message".into()).unwrap();
+    let _ = tx.send("past_message".into()); // no subscribers yet
 
     // Subscribe after the message
     let mut rx = tx.subscribe();

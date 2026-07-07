@@ -13,7 +13,11 @@ use clap::{Parser, Subcommand, ValueEnum};
 /// When no subcommand is given, the server starts. Subcommands like
 /// `install-service` perform service management and exit early.
 #[derive(Parser, Debug)]
-#[command(name = "lm-sensors-web", version, about = "Hardware sensor monitoring REST API with CLI")]
+#[command(
+    name = "lm-sensors-web",
+    version,
+    about = "Hardware sensor monitoring REST API with CLI"
+)]
 pub struct Cli {
     /// Subcommand (service management). `None` = start the server.
     #[command(subcommand)]
@@ -166,7 +170,10 @@ mod tests {
     #[test]
     fn test_cli_uninstall() {
         let cli = Cli::parse_from(["lm-sensors-web", "uninstall-service"]);
-        assert!(matches!(cli.command, Some(Command::UninstallService { .. })));
+        assert!(matches!(
+            cli.command,
+            Some(Command::UninstallService { .. })
+        ));
     }
 
     /// Service control subcommands.
@@ -174,12 +181,16 @@ mod tests {
     fn test_cli_service_control() {
         for subcmd in ["start-service", "stop-service", "restart-service"] {
             let cli = Cli::parse_from(["lm-sensors-web", subcmd]);
-            assert!(matches!(
-                cli.command,
-                Some(Command::StartService { .. })
-                    | Some(Command::StopService { .. })
-                    | Some(Command::RestartService { .. })
-            ), "Expected service control command for '{}'", subcmd);
+            assert!(
+                matches!(
+                    cli.command,
+                    Some(Command::StartService { .. })
+                        | Some(Command::StopService { .. })
+                        | Some(Command::RestartService { .. })
+                ),
+                "Expected service control command for '{}'",
+                subcmd
+            );
         }
     }
 
@@ -222,10 +233,14 @@ mod tests {
     fn test_cli_all_flags() {
         let cli = Cli::parse_from([
             "lm-sensors-web",
-            "-H", "10.0.0.1",
-            "-p", "8080",
-            "-c", "/etc/app.json",
-            "--log-level", "trace",
+            "-H",
+            "10.0.0.1",
+            "-p",
+            "8080",
+            "-c",
+            "/etc/app.json",
+            "--log-level",
+            "trace",
         ]);
         assert_eq!(cli.host, "10.0.0.1");
         assert_eq!(cli.port, 8080);

@@ -8,7 +8,8 @@
 //! cargo test --test cli_integration
 //! ```
 
-use lm_sensors_web::cli::{Cli, Command, LogLevel};
+use clap::Parser;
+use lm_sensors_web::cli::{Cli, Command};
 
 // ── Default Behavior Tests ──────────────────────────────────────
 
@@ -22,12 +23,11 @@ fn test_no_args_defaults() {
     assert!(cli.config.is_none());
 }
 
-/// --help flag prevents parsing of other args.
+/// --help flag returns error (not panic).
 #[test]
-#[should_panic]
 fn test_help_flag() {
-    // clap panics with help message
-    Cli::parse_from(["lm-sensors-web", "--help"]);
+    let result = Cli::try_parse_from(["lm-sensors-web", "--help"]);
+    assert!(result.is_err());
 }
 
 // ── Host/Port Tests ────────────────────────────────────────────
@@ -95,9 +95,9 @@ fn test_all_log_levels() {
 
 /// Invalid log level should fail.
 #[test]
-#[should_panic]
 fn test_invalid_log_level() {
-    Cli::parse_from(["lm-sensors-web", "--log-level", "verbose"]);
+    let result = Cli::try_parse_from(["lm-sensors-web", "--log-level", "verbose"]);
+    assert!(result.is_err());
 }
 
 // ── Config Tests ──────────────────────────────────────────────
@@ -131,8 +131,10 @@ fn test_install_service() {
     let cli = Cli::parse_from([
         "lm-sensors-web",
         "install-service",
-        "--binary", "/usr/local/bin/lm-sensors-web",
-        "--config", "/etc/lm-sensors-web/config.json",
+        "--binary",
+        "/usr/local/bin/lm-sensors-web",
+        "--config",
+        "/etc/lm-sensors-web/config.json",
     ]);
     assert!(matches!(cli.command, Some(Command::InstallService { .. })));
 }
@@ -151,7 +153,10 @@ fn test_install_service_user() {
 #[test]
 fn test_uninstall_service() {
     let cli = Cli::parse_from(["lm-sensors-web", "uninstall-service"]);
-    assert!(matches!(cli.command, Some(Command::UninstallService { .. })));
+    assert!(matches!(
+        cli.command,
+        Some(Command::UninstallService { .. })
+    ));
 }
 
 /// Service control subcommands.
@@ -186,10 +191,14 @@ fn test_status_service() {
 fn test_all_flags_combined() {
     let cli = Cli::parse_from([
         "lm-sensors-web",
-        "-H", "10.0.0.1",
-        "-p", "8080",
-        "-c", "/etc/app.json",
-        "-l", "trace",
+        "-H",
+        "10.0.0.1",
+        "-p",
+        "8080",
+        "-c",
+        "/etc/app.json",
+        "-l",
+        "trace",
     ]);
     assert_eq!(cli.host, "10.0.0.1");
     assert_eq!(cli.port, 8080);
@@ -202,8 +211,10 @@ fn test_all_flags_combined() {
 fn test_flags_with_subcommand() {
     let cli = Cli::parse_from([
         "lm-sensors-web",
-        "-H", "127.0.0.1",
-        "-p", "8080",
+        "-H",
+        "127.0.0.1",
+        "-p",
+        "8080",
         "status-service",
     ]);
     assert_eq!(cli.host, "127.0.0.1");

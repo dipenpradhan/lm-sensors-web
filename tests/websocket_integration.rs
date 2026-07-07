@@ -13,8 +13,8 @@ use lm_sensors_web::sensors::{
     Device, DeviceReadings, FeatureInfo, SensorReadings, SubFeatureInfo,
 };
 use serde_json::json;
-use std::sync::broadcast;
 use std::time::Duration;
+use tokio::sync::broadcast;
 
 // ── Broadcast Channel Tests ──────────────────────────────────────
 
@@ -70,17 +70,14 @@ async fn test_broadcast_channel_close() {
     drop(tx); // Close the channel
 
     let result = rx.recv().await;
-    assert!(matches!(
-        result,
-        Err(broadcast::error::RecvError::Closed)
-    ));
+    assert!(matches!(result, Err(broadcast::error::RecvError::Closed)));
 }
 
 /// Late subscriber does not receive past messages.
 #[tokio::test]
 async fn test_broadcast_late_subscriber() {
     let (tx, _) = broadcast::channel::<String>(10);
-    tx.send("msg1".into()).unwrap();
+    let _ = tx.send("msg1".into()); // no subscribers yet
 
     // Subscribe after the message was sent
     let mut rx = tx.subscribe();
@@ -147,7 +144,7 @@ async fn test_broadcast_large_payload() {
             "device": {
                 "name": format!("sensor{}", i),
                 "bus": "ISA",
-                "path": None
+                "path": json!(null)
             },
             "features": features
         }));
@@ -184,7 +181,9 @@ async fn test_broadcast_concurrent_sends() {
     let mut received = vec![];
     for _ in 0..10 {
         let msg = tokio::time::timeout(Duration::from_millis(100), rx.recv())
-            .await.unwrap().unwrap();
+            .await
+            .unwrap()
+            .unwrap();
         received.push(msg);
     }
 
@@ -203,7 +202,11 @@ async fn test_broadcast_real_sensor_readings() {
     let readings = SensorReadings {
         devices: vec![
             DeviceReadings {
-                device: Device { name: "cpu".into(), bus: "ISA".into(), path: None },
+                device: Device {
+                    name: "cpu".into(),
+                    bus: "ISA".into(),
+                    path: None,
+                },
                 features: vec![FeatureInfo {
                     name: "temp1".into(),
                     sub_features: vec![SubFeatureInfo {
@@ -214,7 +217,11 @@ async fn test_broadcast_real_sensor_readings() {
                 }],
             },
             DeviceReadings {
-                device: Device { name: "gpu".into(), bus: "PCI".into(), path: None },
+                device: Device {
+                    name: "gpu".into(),
+                    bus: "PCI".into(),
+                    path: None,
+                },
                 features: vec![FeatureInfo {
                     name: "fan1".into(),
                     sub_features: vec![SubFeatureInfo {

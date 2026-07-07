@@ -3,9 +3,9 @@
 //! - `GET /api/health` — liveness probe (returns status + timestamp)
 //! - `POST /api/reload` — reload config file at runtime
 
-use axum::http::StatusCode;
 use axum::Json;
 use axum::extract::State;
+use axum::http::StatusCode;
 use chrono::Local;
 use serde_json::json;
 
@@ -32,9 +32,7 @@ pub async fn health() -> Json<serde_json::Value> {
 /// Returns:
 /// - 200 OK with success message on reload
 /// - 500 Internal Server Error if reload failed
-pub async fn reload_config(
-    State(state): State<AppState>,
-) -> (StatusCode, Json<serde_json::Value>) {
+pub async fn reload_config(State(state): State<AppState>) -> (StatusCode, Json<serde_json::Value>) {
     let path = std::path::Path::new(&state.config_path);
 
     match Config::load(path) {

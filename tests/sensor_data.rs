@@ -49,7 +49,10 @@ fn test_single_device_single_feature() {
     let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
     assert_eq!(parsed["devices"][0]["device"]["name"], "test");
     assert_eq!(parsed["devices"][0]["features"][0]["name"], "temp1");
-    assert_eq!(parsed["devices"][0]["features"][0]["sub_features"][0]["value"], 65.0);
+    assert_eq!(
+        parsed["devices"][0]["features"][0]["sub_features"][0]["value"],
+        65.0
+    );
 }
 
 /// Multiple devices with mixed feature types.
@@ -58,7 +61,11 @@ fn test_mixed_feature_types() {
     let readings = SensorReadings {
         devices: vec![
             DeviceReadings {
-                device: Device { name: "cpu".into(), bus: "ISA".into(), path: None },
+                device: Device {
+                    name: "cpu".into(),
+                    bus: "ISA".into(),
+                    path: None,
+                },
                 features: vec![
                     FeatureInfo {
                         name: "temp1".into(),
@@ -79,7 +86,11 @@ fn test_mixed_feature_types() {
                 ],
             },
             DeviceReadings {
-                device: Device { name: "battery".into(), bus: "SMBus".into(), path: None },
+                device: Device {
+                    name: "battery".into(),
+                    bus: "SMBus".into(),
+                    path: None,
+                },
                 features: vec![FeatureInfo {
                     name: "in0".into(),
                     sub_features: vec![SubFeatureInfo {
@@ -101,14 +112,21 @@ fn test_mixed_feature_types() {
 fn test_device_empty_features() {
     let readings = SensorReadings {
         devices: vec![DeviceReadings {
-            device: Device { name: "empty".into(), bus: "ISA".into(), path: None },
+            device: Device {
+                name: "empty".into(),
+                bus: "ISA".into(),
+                path: None,
+            },
             features: vec![],
         }],
     };
     let json = serde_json::to_string(&readings).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
     assert!(parsed["devices"][0]["features"].is_array());
-    assert_eq!(parsed["devices"][0]["features"].as_array().unwrap().len(), 0);
+    assert_eq!(
+        parsed["devices"][0]["features"].as_array().unwrap().len(),
+        0
+    );
 }
 
 /// SubFeature with None value (unreadable sensor).
@@ -116,7 +134,11 @@ fn test_device_empty_features() {
 fn test_subfeature_none_value() {
     let readings = SensorReadings {
         devices: vec![DeviceReadings {
-            device: Device { name: "test".into(), bus: "ISA".into(), path: None },
+            device: Device {
+                name: "test".into(),
+                bus: "ISA".into(),
+                path: None,
+            },
             features: vec![FeatureInfo {
                 name: "temp1".into(),
                 sub_features: vec![
@@ -136,7 +158,10 @@ fn test_subfeature_none_value() {
     };
     let json = serde_json::to_string(&readings).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-    assert_eq!(parsed["devices"][0]["features"][0]["sub_features"][0]["value"], 65.0);
+    assert_eq!(
+        parsed["devices"][0]["features"][0]["sub_features"][0]["value"],
+        65.0
+    );
     assert!(parsed["devices"][0]["features"][0]["sub_features"][1]["value"].is_null());
 }
 
@@ -203,7 +228,11 @@ fn test_full_roundtrip() {
 fn test_unusual_values() {
     let readings = SensorReadings {
         devices: vec![DeviceReadings {
-            device: Device { name: "ext".into(), bus: "SMBus".into(), path: None },
+            device: Device {
+                name: "ext".into(),
+                bus: "SMBus".into(),
+                path: None,
+            },
             features: vec![FeatureInfo {
                 name: "temp1".into(),
                 sub_features: vec![
@@ -223,7 +252,10 @@ fn test_unusual_values() {
     };
     let json = serde_json::to_string(&readings).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-    assert_eq!(parsed["devices"][0]["features"][0]["sub_features"][0]["value"], -40.0);
+    assert_eq!(
+        parsed["devices"][0]["features"][0]["sub_features"][0]["value"],
+        -40.0
+    );
 }
 
 /// Device path with special characters.
@@ -241,10 +273,12 @@ fn test_device_path_special_chars() {
     };
     let json = serde_json::to_string(&readings).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-    assert!(parsed["devices"][0]["device"]["path"]
-        .as_str()
-        .unwrap()
-        .contains("temp1_input"));
+    assert!(
+        parsed["devices"][0]["device"]["path"]
+            .as_str()
+            .unwrap()
+            .contains("temp1_input")
+    );
 }
 
 // ── Type Property Tests ─────────────────────────────────────────
@@ -252,7 +286,11 @@ fn test_device_path_special_chars() {
 /// Device derives Clone, Debug, Serialize, Deserialize.
 #[test]
 fn test_device_traits() {
-    let d = Device { name: "test".into(), bus: "ISA".into(), path: None };
+    let d = Device {
+        name: "test".into(),
+        bus: "ISA".into(),
+        path: None,
+    };
     let _cloned = d.clone();
     let _debug = format!("{:?}", d);
     let _json = serde_json::to_string(&d).unwrap();
@@ -262,7 +300,10 @@ fn test_device_traits() {
 /// FeatureInfo derives Clone, Debug, Serialize, Deserialize.
 #[test]
 fn test_feature_traits() {
-    let f = FeatureInfo { name: "temp1".into(), sub_features: vec![] };
+    let f = FeatureInfo {
+        name: "temp1".into(),
+        sub_features: vec![],
+    };
     let _cloned = f.clone();
     let _debug = format!("{:?}", f);
     let _json = serde_json::to_string(&f).unwrap();
@@ -272,7 +313,11 @@ fn test_feature_traits() {
 /// SubFeatureInfo derives Clone, Debug, Serialize, Deserialize.
 #[test]
 fn test_subfeature_traits() {
-    let s = SubFeatureInfo { name: "temp1_input".into(), value: None, unit: None };
+    let s = SubFeatureInfo {
+        name: "temp1_input".into(),
+        value: None,
+        unit: None,
+    };
     let _cloned = s.clone();
     let _debug = format!("{:?}", s);
     let _json = serde_json::to_string(&s).unwrap();

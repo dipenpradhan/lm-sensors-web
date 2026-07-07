@@ -26,7 +26,7 @@
 //! `SensorManager` tests require a live `libsensors` environment and are
 //! integration-level — see `tests/sensor_manager.rs`.
 
-use std::sync::{RwLock, Arc};
+use std::sync::{Arc, RwLock};
 
 /// Re-export all data types so callers import from the parent module.
 pub use self::data::*;
@@ -121,7 +121,9 @@ pub struct SensorManager {
 impl Clone for SensorManager {
     fn clone(&self) -> Self {
         // Cheap clone — increments Arc refcount, no deep copy.
-        Self { sensors: Arc::clone(&self.sensors) }
+        Self {
+            sensors: Arc::clone(&self.sensors),
+        }
     }
 }
 
@@ -137,7 +139,9 @@ impl SensorManager {
         let sensors = lm_sensors::Initializer::default()
             .initialize()
             .map_err(|e| format!("Failed to initialize lm-sensors: {}", e))?;
-        Ok(Self { sensors: Arc::new(RwLock::new(SafeLMSensors(sensors))) })
+        Ok(Self {
+            sensors: Arc::new(RwLock::new(SafeLMSensors(sensors))),
+        })
     }
 
     /// Execute a closure with read access to the underlying `LMSensors`.
@@ -220,7 +224,13 @@ fn device_features(c: &lm_sensors::ChipRef) -> Vec<FeatureInfo> {
     c.feature_iter()
         .filter_map(|f| {
             // Feature name may be None for anonymous features; use empty string.
-            let name = f.name().transpose().ok().flatten().unwrap_or_default().to_string();
+            let name = f
+                .name()
+                .transpose()
+                .ok()
+                .flatten()
+                .unwrap_or_default()
+                .to_string();
             let subs: Vec<_> = f
                 .sub_feature_iter()
                 .filter_map(|sf| {
@@ -236,7 +246,10 @@ fn device_features(c: &lm_sensors::ChipRef) -> Vec<FeatureInfo> {
                     }
                 })
                 .collect();
-            Some(FeatureInfo { name, sub_features: subs })
+            Some(FeatureInfo {
+                name,
+                sub_features: subs,
+            })
         })
         .collect()
 }
@@ -306,7 +319,11 @@ mod tests {
         let r = SensorReadings {
             devices: vec![
                 DeviceReadings {
-                    device: Device { name: "cpu".into(), bus: "ISA".into(), path: None },
+                    device: Device {
+                        name: "cpu".into(),
+                        bus: "ISA".into(),
+                        path: None,
+                    },
                     features: vec![FeatureInfo {
                         name: "temp1".into(),
                         sub_features: vec![SubFeatureInfo {
@@ -317,7 +334,11 @@ mod tests {
                     }],
                 },
                 DeviceReadings {
-                    device: Device { name: "gpu".into(), bus: "PCI".into(), path: None },
+                    device: Device {
+                        name: "gpu".into(),
+                        bus: "PCI".into(),
+                        path: None,
+                    },
                     features: vec![FeatureInfo {
                         name: "fan1".into(),
                         sub_features: vec![SubFeatureInfo {
@@ -360,7 +381,10 @@ mod tests {
         let j = serde_json::to_string(&original).unwrap();
         let parsed: SensorReadings = serde_json::from_str(&j).unwrap();
         assert_eq!(original.devices.len(), parsed.devices.len());
-        assert_eq!(original.devices[0].device.name, parsed.devices[0].device.name);
+        assert_eq!(
+            original.devices[0].device.name,
+            parsed.devices[0].device.name
+        );
         assert_eq!(
             original.devices[0].features[0].sub_features[0].value,
             parsed.devices[0].features[0].sub_features[0].value,

@@ -8,8 +8,10 @@
 //! cargo test --test webhook_test
 //! ```
 
-use lm_sensors_web::config::{WebhookConfig, WebhookTrigger, WebhookCondition};
-use lm_sensors_web::sensors::{Device, DeviceReadings, FeatureInfo, SensorReadings, SubFeatureInfo};
+use lm_sensors_web::config::{WebhookCondition, WebhookConfig, WebhookTrigger};
+use lm_sensors_web::sensors::{
+    Device, DeviceReadings, FeatureInfo, SensorReadings, SubFeatureInfo,
+};
 
 /// WebhookConfig with temperature trigger serializes correctly.
 #[test]
@@ -64,7 +66,9 @@ fn test_sensor_readings_temps() {
         }],
     };
 
-    let temps: Vec<f64> = readings.devices.iter()
+    let temps: Vec<f64> = readings
+        .devices
+        .iter()
         .flat_map(|d| d.features.iter())
         .flat_map(|f| f.sub_features.iter())
         .filter_map(|s| s.value)

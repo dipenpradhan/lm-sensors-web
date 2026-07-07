@@ -19,8 +19,8 @@
 //! Each WebSocket client subscribes to the broadcast channel and
 //! receives full sensor snapshots at the configured interval.
 
-use axum::extract::ws::WebSocket;
 use axum::extract::WebSocketUpgrade;
+use axum::extract::ws::WebSocket;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
@@ -79,8 +79,7 @@ impl WebSocketServer {
         tokio::spawn(async move {
             // Read interval from config once (not re-read on every tick).
             let interval_ms = config.read().await.websocket.broadcast_interval_ms;
-            let mut ticker =
-                tokio::time::interval(std::time::Duration::from_millis(interval_ms));
+            let mut ticker = tokio::time::interval(std::time::Duration::from_millis(interval_ms));
 
             loop {
                 ticker.tick().await;
@@ -102,9 +101,7 @@ impl WebSocketServer {
     /// subscribes the socket to the broadcast channel.
     pub fn make_handler(&self) -> axum::routing::MethodRouter<()> {
         let state = self.state.clone();
-        axum::routing::get(move |ws: WebSocketUpgrade| {
-            ws::upgrade_handler(ws, state.clone())
-        })
+        axum::routing::get(move |ws: WebSocketUpgrade| ws::upgrade_handler(ws, state.clone()))
     }
 }
 
@@ -193,8 +190,13 @@ mod tests {
         let (tx, _) = broadcast::channel::<String>(2);
         let mut rx = tx.subscribe();
         // Fill the channel beyond capacity to cause lag.
-        for _ in 0..5 { let _ = tx.send("x".into()); }
+        for _ in 0..5 {
+            let _ = tx.send("x".into());
+        }
         let result = rx.recv().await;
-        assert!(matches!(result, Err(broadcast::error::RecvError::Lagged(_))));
+        assert!(matches!(
+            result,
+            Err(broadcast::error::RecvError::Lagged(_))
+        ));
     }
 }

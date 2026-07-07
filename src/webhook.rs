@@ -137,7 +137,11 @@ async fn run_hook(wh: WebhookConfig, sm: Arc<SensorManager>, client: Client) {
 /// - `Always` → fire unconditionally
 /// - `Temperature` → fire if any temp reading crosses the threshold
 /// - `OnChange` → fire if average temp changed by > 0.1°C since last fire
-fn should_fire(wh: &WebhookConfig, readings: &crate::sensors::SensorReadings, last: &Option<f64>) -> bool {
+fn should_fire(
+    wh: &WebhookConfig,
+    readings: &crate::sensors::SensorReadings,
+    last: &Option<f64>,
+) -> bool {
     match &wh.trigger {
         WebhookTrigger::Always => true,
         WebhookTrigger::Temperature => {
@@ -165,7 +169,10 @@ fn should_fire(wh: &WebhookConfig, readings: &crate::sensors::SensorReadings, la
 ///
 /// Walks all devices → features → sub-features looking for values
 /// named "temp" and compares them against above/below thresholds.
-fn check_temp(readings: &crate::sensors::SensorReadings, cond: &crate::config::WebhookCondition) -> bool {
+fn check_temp(
+    readings: &crate::sensors::SensorReadings,
+    cond: &crate::config::WebhookCondition,
+) -> bool {
     for dev in &readings.devices {
         for feat in &dev.features {
             for sub in &feat.sub_features {
@@ -173,10 +180,14 @@ fn check_temp(readings: &crate::sensors::SensorReadings, cond: &crate::config::W
                 if sub.name.contains("temp") {
                     if let Some(v) = sub.value {
                         if let Some(above) = cond.above_celsius {
-                            if v > above { return true; }
+                            if v > above {
+                                return true;
+                            }
                         }
                         if let Some(below) = cond.below_celsius {
-                            if v < below { return true; }
+                            if v < below {
+                                return true;
+                            }
                         }
                     }
                 }
@@ -205,7 +216,11 @@ fn avg_temp(readings: &crate::sensors::SensorReadings) -> Option<f64> {
             }
         }
     }
-    if count > 0 { Some(sum / count as f64) } else { None }
+    if count > 0 {
+        Some(sum / count as f64)
+    } else {
+        None
+    }
 }
 
 /// Send an HTTP request with the sensor data payload.
@@ -214,7 +229,11 @@ fn avg_temp(readings: &crate::sensors::SensorReadings) -> Option<f64> {
 /// Uses the configured HTTP method, content-type, and custom headers.
 ///
 /// Returns the average temperature on success (for on-change tracking).
-async fn send_hook(wh: &WebhookConfig, client: &Client, readings: &crate::sensors::SensorReadings) -> Result<f64, String> {
+async fn send_hook(
+    wh: &WebhookConfig,
+    client: &Client,
+    readings: &crate::sensors::SensorReadings,
+) -> Result<f64, String> {
     let payload = json!({
         "webhook": &wh.name,
         "timestamp": Local::now().to_rfc3339(),
@@ -249,12 +268,24 @@ mod tests {
     fn test_avg_temp() {
         let r = SensorReadings {
             devices: vec![DeviceReadings {
-                device: Device { name: "t".into(), bus: "b".into(), path: None },
+                device: Device {
+                    name: "t".into(),
+                    bus: "b".into(),
+                    path: None,
+                },
                 features: vec![FeatureInfo {
                     name: "temp1".into(),
                     sub_features: vec![
-                        SubFeatureInfo { name: "temp1_input".into(), value: Some(60.0), unit: Some("°C".into()) },
-                        SubFeatureInfo { name: "temp2_input".into(), value: Some(80.0), unit: Some("°C".into()) },
+                        SubFeatureInfo {
+                            name: "temp1_input".into(),
+                            value: Some(60.0),
+                            unit: Some("°C".into()),
+                        },
+                        SubFeatureInfo {
+                            name: "temp2_input".into(),
+                            value: Some(80.0),
+                            unit: Some("°C".into()),
+                        },
                     ],
                 }],
             }],
@@ -274,13 +305,27 @@ mod tests {
     fn test_temp_above() {
         let r = SensorReadings {
             devices: vec![DeviceReadings {
-                device: Device { name: "t".into(), bus: "b".into(), path: None },
+                device: Device {
+                    name: "t".into(),
+                    bus: "b".into(),
+                    path: None,
+                },
                 features: vec![FeatureInfo {
                     name: "temp1".into(),
-                    sub_features: vec![SubFeatureInfo { name: "temp1_input".into(), value: Some(90.0), unit: Some("°C".into()) }],
+                    sub_features: vec![SubFeatureInfo {
+                        name: "temp1_input".into(),
+                        value: Some(90.0),
+                        unit: Some("°C".into()),
+                    }],
                 }],
             }],
         };
-        assert!(check_temp(&r, &crate::config::WebhookCondition { above_celsius: Some(80.0), below_celsius: None }));
+        assert!(check_temp(
+            &r,
+            &crate::config::WebhookCondition {
+                above_celsius: Some(80.0),
+                below_celsius: None
+            }
+        ));
     }
 }
