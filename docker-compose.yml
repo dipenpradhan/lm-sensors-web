@@ -1,15 +1,15 @@
 services:
-  lm-sensors-api:
+  lm-sensors-web:
     build: .
-    container_name: lm-sensors-api
+    container_name: lm-sensors-web
     restart: unless-stopped
+    user: "nobody"
     ports:
-      - "47890:47890"
+      - "127.0.0.1:47890:47890"
     volumes:
-      - ./config.example.json:/etc/lm-sensors-api/config.json:ro
+      - ./config.example.json:/etc/lm-sensors-web/config.json:ro
     environment:
       - RUST_LOG=info
-      - CONFIG_PATH=/etc/lm-sensors-api/config.json
     # Access to /sys/class/hwmon for sensor reads (host mode needed for real data)
     # Uncomment the next two lines for real sensor access:
     # pid: host

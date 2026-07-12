@@ -136,7 +136,7 @@ fn default_sensors() -> SensorsConfig {
 }
 
 fn default_host() -> String {
-    "0.0.0.0".into()
+    "127.0.0.1".into()
 }
 fn default_port() -> u16 {
     47890
@@ -229,7 +229,7 @@ mod tests {
     #[test]
     fn test_default_config() {
         let c = Config::default();
-        assert_eq!(c.server.host, "0.0.0.0");
+        assert_eq!(c.server.host, "127.0.0.1");
         assert_eq!(c.server.port, 47890);
         assert_eq!(c.server.log_level, "info");
         assert!(c.websocket.enabled);

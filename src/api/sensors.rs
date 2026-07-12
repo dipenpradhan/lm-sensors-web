@@ -22,6 +22,18 @@ pub async fn get_devices(State(state): State<AppState>) -> Json<serde_json::Valu
     Json(json!({ "devices": devices }))
 }
 
+/// Get full sensor readings from all devices.
+///
+/// Returns `{"devices": [{"device": {...}, "features": [...]}]}`
+/// with all current sensor values. This is the main endpoint used by
+/// the dashboard REST fallback and external consumers.
+///
+/// Status: 200 OK
+pub async fn get_sensors(State(state): State<AppState>) -> Json<serde_json::Value> {
+    let readings = state.sensor_manager.read_all();
+    Json(json!(readings))
+}
+
 /// Get a specific device by ID (partial name match).
 ///
 /// Searches all devices and returns the first whose name contains

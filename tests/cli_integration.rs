@@ -18,7 +18,7 @@ use lm_sensors_web::cli::{Cli, Command};
 fn test_no_args_defaults() {
     let cli = Cli::parse_from(["lm-sensors-web"]);
     assert!(cli.command.is_none());
-    assert_eq!(cli.host, "0.0.0.0");
+    assert_eq!(cli.host, "127.0.0.1");
     assert_eq!(cli.port, 47890);
     assert!(cli.config.is_none());
 }

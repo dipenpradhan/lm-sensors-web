@@ -22,7 +22,7 @@ use tempfile::NamedTempFile;
 #[test]
 fn test_default_config_all_values() {
     let c = Config::default();
-    assert_eq!(c.server.host, "0.0.0.0");
+    assert_eq!(c.server.host, "127.0.0.1");
     assert_eq!(c.server.port, 47890);
     assert_eq!(c.server.log_level, "info");
     assert!(c.websocket.enabled);
@@ -36,7 +36,7 @@ fn test_default_config_all_values() {
 #[test]
 fn test_server_config_defaults() {
     let sc = ServerConfig::default();
-    assert_eq!(sc.host, "0.0.0.0");
+    assert_eq!(sc.host, "127.0.0.1");
     assert_eq!(sc.port, 47890);
     assert_eq!(sc.log_level, "info");
 }
@@ -67,7 +67,7 @@ fn test_load_minimal_json() {
     fs::write(&f, json).unwrap();
     let c = Config::load(f.path()).unwrap();
     // All defaults should apply
-    assert_eq!(c.server.host, "0.0.0.0");
+    assert_eq!(c.server.host, "127.0.0.1");
     assert_eq!(c.server.port, 47890);
     assert!(c.websocket.enabled);
     assert!(c.webhooks.is_empty());

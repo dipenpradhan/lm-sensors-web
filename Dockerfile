@@ -10,27 +10,36 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY Cargo.toml Cargo.lock* ./
 COPY src/ ./src/
+COPY static/ ./static/
 RUN cargo build --release
 
 # Runtime stage
 FROM debian:bookworm-slim AS runtime
 
-# Install libsensors runtime
+# Install libsensors runtime + wget for healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libsensors5 \
     ca-certificates \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/lm-sensors-api /usr/local/bin/lm-sensors-api
-COPY config.example.json /etc/lm-sensors-api/config.json
+# Work directory so relative paths (static/) resolve correctly
+WORKDIR /app
+
+COPY --from=builder /app/target/release/lm-sensors-web /usr/local/bin/lm-sensors-web
+COPY --from=builder /app/static/ ./static/
+COPY config.example.json /etc/lm-sensors-web/config.json
 
 ENV RUST_LOG=info
-ENV CONFIG_PATH=/etc/lm-sensors-api/config.json
+ENV CONFIG_PATH=/etc/lm-sensors-web/config.json
 
 EXPOSE 47890
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD wget -qO- http://localhost:47890/api/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:47890/api/health || exit 1
 
-ENTRYPOINT ["lm-sensors-api"]
+USER nobody
+
+# Shell form so $CONFIG_PATH gets expanded
+ENTRYPOINT ["lm-sensors-web", "--config", "/etc/lm-sensors-web/config.json"]
 CMD []

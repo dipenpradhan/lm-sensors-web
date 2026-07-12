@@ -127,8 +127,9 @@ impl Clone for SensorManager {
     }
 }
 
-unsafe impl Send for SensorManager {}
-unsafe impl Sync for SensorManager {}
+// SensorManager is automatically Send + Sync because
+// Arc<RwLock<SafeLMSensors>> is Send + Sync when SafeLMSensors is Send + Sync.
+// No need for explicit unsafe impl.
 
 impl SensorManager {
     /// Initialize the sensor manager by opening the `lm-sensors` library.

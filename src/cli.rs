@@ -23,8 +23,10 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Command>,
 
-    /// Bind address override (default: 0.0.0.0 — all interfaces).
-    #[arg(short = 'H', long, default_value = "0.0.0.0")]
+    /// Bind address override (default: 127.0.0.1 — localhost only).
+    ///
+    /// Use `0.0.0.0` to expose on all interfaces (requires caution).
+    #[arg(short = 'H', long, default_value = "127.0.0.1")]
     pub host: String,
 
     /// Listen port override (default: 47890 — outside well-known range).
@@ -120,7 +122,7 @@ mod tests {
     fn test_cli_no_args() {
         let cli = Cli::parse_from(["lm-sensors-web"]);
         assert!(cli.command.is_none());
-        assert_eq!(cli.host, "0.0.0.0");
+        assert_eq!(cli.host, "127.0.0.1");
         assert_eq!(cli.port, 47890);
     }
 

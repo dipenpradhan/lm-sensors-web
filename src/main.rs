@@ -94,17 +94,48 @@ async fn main() -> Result<(), String> {
 /// Run the HTTP server with graceful shutdown support.
 ///
 /// # Lifecycle
-/// 1. Override config with CLI flags
-/// 2. Initialize sensor manager (non-fatal if unavailable)
-/// 3. Start WebSocket broadcast task (if enabled)
-/// 4. Start webhook engine (if configured)
-/// 5. Bind TCP listener and serve requests
-/// 6. On SIGTERM/SIGINT → stop accepting connections, join tasks
+/// 1. Load config from file or defaults
+/// 2. Apply CLI overrides only when explicitly provided (not default values)
+/// 3. Initialize sensor manager (non-fatal if unavailable)
+/// 4. Start WebSocket broadcast task (if enabled)
+/// 5. Start webhook engine (if configured)
+/// 6. Bind TCP listener and serve requests
+/// 7. On SIGTERM/SIGINT → stop accepting connections, join tasks
 async fn run_server(cli: Cli, config: Config) -> Result<(), String> {
-    // Apply CLI overrides to the loaded config.
+    // Apply CLI overrides only when explicitly provided.
+    // Default values (127.0.0.1, 47890) are just clap's fallbacks — they
+    // should not override config file values. We check for the defaults
+    // and skip override if the user didn't actually pass the flags.
     let mut config = config;
-    config.server.host = cli.host.clone();
-    config.server.port = cli.port;
+    // Check if user passed explicit --config flag or CONFIG_PATH env var.
+    let config_path: Option<String> = cli
+        .config
+        .clone()
+        .or_else(|| std::env::var("CONFIG_PATH").ok());
+    if let Some(path) = config_path {
+        if let Ok(_file_config) = Config::load(std::path::Path::new(&path)) {
+            info!("Loaded config from {}", path);
+            // CLI host/port override file config only if they differ from clap defaults.
+            if cli.host != "127.0.0.1" {
+                config.server.host = cli.host.clone();
+            }
+            if cli.port != 47890 {
+                config.server.port = cli.port;
+            }
+        } else {
+            // Fall back to CLI defaults + file config values.
+            if cli.host != "127.0.0.1" {
+                config.server.host = cli.host.clone();
+            }
+            if cli.port != 47890 {
+                config.server.port = cli.port;
+            }
+        }
+    } else {
+        // No config file — use CLI values.
+        config.server.host = cli.host.clone();
+        config.server.port = cli.port;
+    }
 
     info!(
         "Starting lm-sensors-web on {}:{}",

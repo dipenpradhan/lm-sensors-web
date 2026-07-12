@@ -49,7 +49,7 @@ impl ServiceManager {
                 .map(|d| d.join("systemd/user"))
                 .ok_or_else(|| String::from("Cannot determine user config directory"))?
         } else {
-            PathBuf::from("/etc/systemd")
+            PathBuf::from("/etc/systemd/system")
         };
 
         // Write the unit file.
@@ -77,7 +77,7 @@ impl ServiceManager {
                 .map(|d| d.join("systemd/user"))
                 .ok_or_else(|| String::from("Cannot determine user config directory"))?
         } else {
-            PathBuf::from("/etc/systemd")
+            PathBuf::from("/etc/systemd/system")
         };
         let path = dir.join(format!("{}.service", SVC_NAME));
         if path.exists() {
@@ -105,9 +105,14 @@ impl ServiceManager {
     /// Adds the `--user` flag for user-level services.
     /// Silently logs errors (systemctl failures are non-fatal).
     fn run_systemctl(user: bool, action: &str) {
-        let flag = if user { "--user" } else { "" };
+        let mut args = Vec::new();
+        if user {
+            args.push("--user");
+        }
+        args.push(action);
+        args.push(SVC_NAME);
         let _ = std::process::Command::new("systemctl")
-            .args(&[flag, action, SVC_NAME])
+            .args(&args)
             .output()
             .map_err(|e| warn!("systemctl {}: {}", action, e));
     }
@@ -117,6 +122,13 @@ impl ServiceManager {
     /// Produces a standard `[Unit] / [Service] / [Install]` unit file
     /// with auto-restart, journal logging, and environment variables.
     pub fn unit_file(binary: &str, config: &str) -> String {
+        // Derive the working directory from the binary path so
+        // relative paths (e.g. static/) resolve correctly.
+        let working_dir = if let Some(parent) = std::path::Path::new(binary).parent() {
+            parent.display().to_string()
+        } else {
+            "/".to_string()
+        };
         format!(
             r#"[Unit]
 Description=LM Sensors Web API Service
@@ -124,6 +136,7 @@ After=network.target
 
 [Service]
 Type=simple
+WorkingDirectory={}
 ExecStart={}
 Environment=RUST_LOG=info
 Environment=CONFIG_PATH={}
@@ -135,7 +148,7 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 "#,
-            binary, config
+            working_dir, binary, config
         )
     }
 }
@@ -155,6 +168,7 @@ mod tests {
         assert!(u.contains("Type=simple"));
         assert!(u.contains("Restart=on-failure"));
         assert!(u.contains("WantedBy=multi-user.target"));
+        assert!(u.contains("WorkingDirectory=/usr/bin"));
     }
 
     /// Verify the unit file contains the correct binary and config paths.
@@ -163,5 +177,6 @@ mod tests {
         let u = ServiceManager::unit_file("/opt/my-bin", "/etc/my-config.json");
         assert!(u.contains("ExecStart=/opt/my-bin"));
         assert!(u.contains("CONFIG_PATH=/etc/my-config.json"));
+        assert!(u.contains("WorkingDirectory=/opt"));
     }
 }

@@ -21,7 +21,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
 use crate::api::health::{health, reload_config};
-use crate::api::sensors::{get_device, get_device_features, get_devices};
+use crate::api::sensors::{get_device, get_device_features, get_devices, get_sensors};
 use crate::state::AppState;
 use crate::websocket::WebSocketServer;
 
@@ -46,6 +46,8 @@ pub fn create_router(
         .route("/api/reload", axum::routing::post(reload_config))
         // List all sensor devices (metadata only).
         .route("/api/devices", axum::routing::get(get_devices))
+        // Get full sensor readings from all devices.
+        .route("/api/sensors", axum::routing::get(get_sensors))
         // Get a specific device by partial name match.
         .route("/api/devices/{device_id}", axum::routing::get(get_device))
         // Get a device with all its features and current readings.
@@ -70,9 +72,29 @@ pub fn create_router(
     // Fallback: redirect any unmatched URL to the dashboard.
     router = router.fallback(axum::routing::get(index_handler));
 
-    // Permissive CORS so the frontend works from any origin.
-    // In production, restrict this to your actual domain.
-    router.layer(CorsLayer::permissive())
+    // Restrictive CORS: only allow requests from the same origin.
+    // For cross-origin access, set `CORS_ORIGINS` env var to a comma-separated
+    // list of allowed origins (e.g. "https://example.com,http://localhost:3000").
+    let allowed_origins: Vec<String> = std::env::var("CORS_ORIGINS")
+        .ok()
+        .map(|v| v.split(',').map(str::to_string).collect())
+        .unwrap_or_else(|| {
+            // Default: allow localhost variants only.
+            vec!["http://127.0.0.1".into(), "http://localhost".into()]
+        });
+
+    use axum::http::HeaderValue;
+    use tower_http::cors::AllowOrigin;
+    let cors = CorsLayer::new()
+        .allow_methods([axum::http::Method::GET, axum::http::Method::POST])
+        .allow_headers([axum::http::HeaderName::from_static("content-type")])
+        .allow_origin(AllowOrigin::list(
+            allowed_origins
+                .into_iter()
+                .filter(|o| !o.is_empty())
+                .filter_map(|o| o.parse::<HeaderValue>().ok()),
+        ));
+    router.layer(cors)
 }
 
 /// Redirect the root path to the frontend dashboard.

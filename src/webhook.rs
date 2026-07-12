@@ -15,7 +15,7 @@
 //! WebhookEngine (scheduler task)
 //! ├── reads config every 60s (to pick up new webhooks)
 //! └── for each webhook:
-//!     └── spawns a per-hook async task
+//!     └── spawns a per-hook async task (cancelled on reload)
 //!         ├── reads sensors on interval
 //!         ├── checks trigger condition
 //!         └── fires HTTP POST if condition matches
@@ -24,7 +24,9 @@
 use chrono::Local;
 use reqwest::Client;
 use serde_json::json;
+use std::collections::HashMap;
 use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, error};
 
 use crate::config::{Config, WebhookConfig, WebhookTrigger};
@@ -34,6 +36,7 @@ use crate::sensors::SensorManager;
 ///
 /// Spawns a background task that periodically re-reads the config
 /// and ensures one async task is running for each configured webhook.
+/// Uses CancellationToken to cancel old tasks when config changes.
 pub struct WebhookEngine {
     /// Sensor manager for reading data.
     sensor_manager: Arc<SensorManager>,
@@ -41,6 +44,18 @@ pub struct WebhookEngine {
     config: Arc<tokio::sync::RwLock<Config>>,
     /// HTTP client for sending webhook requests.
     client: Client,
+}
+
+/// Track running webhook tasks so they can be cancelled on reload.
+struct WebhookTask {
+    _handle: tokio::task::JoinHandle<()>,
+    cancel: CancellationToken,
+}
+
+impl WebhookTask {
+    fn cancel(&self) {
+        self.cancel.cancel();
+    }
 }
 
 impl WebhookEngine {
@@ -66,34 +81,60 @@ impl WebhookEngine {
     ///
     /// Runs a loop every 60 seconds that:
     /// 1. Reads the current config for webhook definitions
-    /// 2. Spawns one async task per webhook
+    /// 2. Cancels old per-webhook tasks
+    /// 3. Spawns fresh tasks for the current config
     ///
-    /// Each webhook task runs its own infinite loop with its interval.
-    /// When the config is reloaded, old tasks continue but new ones spawn.
-    /// This is acceptable for the current use case but could use a
-    /// CancellationToken for proper lifecycle management in the future.
+    /// Each webhook task runs its own loop and is cancelled when the
+    /// config is re-read. This prevents task leaks.
     pub fn start(&self) {
         let sm = self.sensor_manager.clone();
         let config = self.config.clone();
         let client = self.client.clone();
 
         tokio::spawn(async move {
+            let mut active_tasks: HashMap<String, WebhookTask> = HashMap::new();
+
             loop {
                 // Re-read config to pick up new/changed webhooks.
                 let webhooks = config.read().await.webhooks.clone();
-                if webhooks.is_empty() {
-                    // No webhooks configured — sleep and check again later.
-                    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-                    continue;
+
+                // Cancel tasks for webhooks that are no longer in config.
+                let webhook_names: Vec<String> = webhooks.iter().map(|w| w.name.clone()).collect();
+                let stale: Vec<String> = active_tasks
+                    .keys()
+                    .filter(|name| !webhook_names.contains(name))
+                    .cloned()
+                    .collect();
+                for name in stale {
+                    if let Some(task) = active_tasks.get(&name) {
+                        task.cancel();
+                    }
+                    active_tasks.remove(&name);
                 }
-                // Spawn one async task per webhook definition.
-                for wh in webhooks {
-                    let s = sm.clone();
-                    let c = client.clone();
-                    tokio::spawn(async move {
-                        run_hook(wh, s, c).await;
-                    });
+
+                // Spawn new tasks for webhooks not yet running.
+                for wh in &webhooks {
+                    if !active_tasks.contains_key(&wh.name) {
+                        let s = sm.clone();
+                        let c = client.clone();
+                        let cancel = CancellationToken::new();
+                        let handle = tokio::spawn({
+                            let wh = wh.clone();
+                            let cancel = cancel.clone();
+                            async move {
+                                run_hook(wh, s, c, cancel).await;
+                            }
+                        });
+                        active_tasks.insert(
+                            wh.name.clone(),
+                            WebhookTask {
+                                _handle: handle,
+                                cancel,
+                            },
+                        );
+                    }
                 }
+
                 // Re-check config every 60 seconds.
                 tokio::time::sleep(std::time::Duration::from_secs(60)).await;
             }
@@ -104,14 +145,26 @@ impl WebhookEngine {
 /// Run a single webhook task in a loop.
 ///
 /// Each call reads sensors, checks the trigger condition, and fires
-/// an HTTP request if the condition is met. Uses exponential backoff
-/// internally via `tokio::time::interval`.
-async fn run_hook(wh: WebhookConfig, sm: Arc<SensorManager>, client: Client) {
+/// an HTTP request if the condition is met. Exits when `cancel` is
+/// triggered (e.g. on config reload).
+async fn run_hook(
+    wh: WebhookConfig,
+    sm: Arc<SensorManager>,
+    client: Client,
+    cancel: CancellationToken,
+) {
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(wh.interval_seconds));
     let mut last: Option<f64> = None;
 
     loop {
-        interval.tick().await;
+        tokio::select! {
+            _ = interval.tick() => {}
+            _ = cancel.cancelled() => {
+                debug!("Webhook '{}' task cancelled", wh.name);
+                return;
+            }
+        }
+
         let readings = sm.read_all();
 
         // Skip if the trigger condition is not met.
@@ -176,8 +229,9 @@ fn check_temp(
     for dev in &readings.devices {
         for feat in &dev.features {
             for sub in &feat.sub_features {
-                // Only check sub-features with "temp" in the name.
-                if sub.name.contains("temp") {
+                // Only check sub-features with "Temp" in the name (case-insensitive).
+                // lm-sensors 0.5.1 Debug output is PascalCase: TemperatureInput, etc.
+                if sub.name.to_lowercase().contains("temp") {
                     if let Some(v) = sub.value {
                         if let Some(above) = cond.above_celsius {
                             if v > above {
@@ -207,7 +261,7 @@ fn avg_temp(readings: &crate::sensors::SensorReadings) -> Option<f64> {
     for dev in &readings.devices {
         for feat in &dev.features {
             for sub in &feat.sub_features {
-                if sub.name.contains("temp") {
+                if sub.name.to_lowercase().contains("temp") {
                     if let Some(v) = sub.value {
                         sum += v;
                         count += 1;

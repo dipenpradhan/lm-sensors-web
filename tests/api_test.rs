@@ -14,7 +14,7 @@ use lm_sensors_web::config::{Config, ServerConfig};
 #[test]
 fn test_default_config_values() {
     let c = Config::default();
-    assert_eq!(c.server.host, "0.0.0.0");
+    assert_eq!(c.server.host, "127.0.0.1");
     assert_eq!(c.server.port, 47890);
     assert_eq!(c.server.log_level, "info");
     assert!(c.websocket.enabled);
@@ -28,7 +28,7 @@ fn test_default_config_values() {
 #[test]
 fn test_server_config_defaults() {
     let sc = ServerConfig::default();
-    assert_eq!(sc.host, "0.0.0.0");
+    assert_eq!(sc.host, "127.0.0.1");
     assert_eq!(sc.port, 47890);
     assert_eq!(sc.log_level, "info");
 }
