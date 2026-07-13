@@ -43,8 +43,8 @@ fn test_git_hash_not_unknown() {
 fn test_version_semver_format() {
     let version = env!("PKG_VERSION");
     assert!(
-        version.starts_with("0.1"),
-        "Version should start with '0.1', got: {}",
+        version.starts_with("0.2"),
+        "Version should start with '0.2', got: {}",
         version
     );
 }

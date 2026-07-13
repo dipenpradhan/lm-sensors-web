@@ -1,6 +1,6 @@
 [package]
 name = "lm-sensors-web"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "Hardware sensor monitoring web application — exposes Linux libsensors data via REST API, WebSocket live-feed, webhooks, and a dark-mode dashboard"
 readme = "README.md"
@@ -9,6 +9,10 @@ repository = "https://github.com/dipenpradhan/lm-sensors-web"
 homepage = "https://github.com/dipenpradhan/lm-sensors-web"
 categories = ["hardware-support", "web-programming::http-server"]
 keywords = ["sensors", "lm-sensors", "hardware", "monitoring", "dashboard"]
+
+[lib]
+name = "lm_sensors_web"
+path = "src/lib.rs"
 
 [[bin]]
 name = "lm-sensors-web"
@@ -30,6 +34,10 @@ tower-http = { version = "0.6", features = ["cors", "fs", "limit"] }
 dirs = "6"
 tempfile = "3"
 tokio-util = { version = "0.7", features = ["rt"] }
+
+[dev-dependencies]
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
 
 [build-dependencies]
 minifier = "0.3.6"
