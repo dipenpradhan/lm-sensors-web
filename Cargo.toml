@@ -2,6 +2,13 @@
 name = "lm-sensors-web"
 version = "0.1.0"
 edition = "2024"
+description = "Hardware sensor monitoring web application — exposes Linux libsensors data via REST API, WebSocket live-feed, webhooks, and a dark-mode dashboard"
+readme = "README.md"
+license = "Apache-2.0"
+repository = "https://github.com/dipenpradhan/lm-sensors-web"
+homepage = "https://github.com/dipenpradhan/lm-sensors-web"
+categories = ["hardware-support", "web-programming::http-server"]
+keywords = ["sensors", "lm-sensors", "hardware", "monitoring", "dashboard"]
 
 [[bin]]
 name = "lm-sensors-web"
