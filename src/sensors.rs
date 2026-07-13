@@ -31,8 +31,6 @@ use std::sync::{Arc, RwLock};
 /// Re-export all data types so callers import from the parent module.
 pub use self::data::*;
 
-/// ── Data types (serialisation schema) ──────────────────────────────
-
 /// Data types for sensor readings. These structs form the JSON schema
 /// exposed via REST API (`/api/sensors`) and WebSocket broadcasts.
 mod data {
@@ -169,7 +167,7 @@ impl SensorManager {
     pub fn get_device(&self, name: &str) -> Option<Device> {
         self.with_lock(|s| {
             s.chip_iter(None)
-                .find(|c| c.name().map_or(false, |n| n.contains(name)))
+                .find(|c| c.name().is_ok_and(|n| n.contains(name)))
                 .map(|c| device_info(&c))
         })
     }
@@ -181,7 +179,7 @@ impl SensorManager {
     pub fn get_device_features(&self, name: &str) -> Option<DeviceReadings> {
         self.with_lock(|s| {
             s.chip_iter(None)
-                .find(|c| c.name().map_or(false, |n| n.contains(name)))
+                .find(|c| c.name().is_ok_and(|n| n.contains(name)))
                 .map(|c| DeviceReadings {
                     device: device_info(&c),
                     features: device_features(&c),
@@ -223,7 +221,7 @@ fn device_info(c: &lm_sensors::ChipRef) -> Device {
 /// and their units. Skips sub-features that fail to read (e.g. write-only).
 fn device_features(c: &lm_sensors::ChipRef) -> Vec<FeatureInfo> {
     c.feature_iter()
-        .filter_map(|f| {
+        .map(|f| {
             // Feature name may be None for anonymous features; use empty string.
             let name = f
                 .name()
@@ -247,10 +245,10 @@ fn device_features(c: &lm_sensors::ChipRef) -> Vec<FeatureInfo> {
                     }
                 })
                 .collect();
-            Some(FeatureInfo {
+            FeatureInfo {
                 name,
                 sub_features: subs,
-            })
+            }
         })
         .collect()
 }

@@ -16,7 +16,10 @@ fn main() {
         .expect("python3 not found — install python3 to build");
 
     if !status.success() {
-        panic!("build_dashboard.py failed (exit code {})", status.code().unwrap_or(-1));
+        panic!(
+            "build_dashboard.py failed (exit code {})",
+            status.code().unwrap_or(-1)
+        );
     }
 
     println!("cargo:rerun-if-changed=static/index.html");

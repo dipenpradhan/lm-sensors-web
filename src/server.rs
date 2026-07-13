@@ -17,8 +17,8 @@
 //! | GET    | `/`                                 | embedded dashboard  |
 //! | GET    | `/*` (fallback)                     | embedded dashboard  |
 
-use axum::{Router, response::Html};
 use axum::http::HeaderValue;
+use axum::{Router, response::Html};
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::api::health::{health, reload_config};
@@ -125,10 +125,10 @@ fn build_cors_layer(host: &str, port: u16) -> CorsLayer {
     // Also allow localhost/127.0.0.1 if we're binding to a local address.
     if host == "localhost" || host == "127.0.0.1" {
         for alt in ["http://localhost:47890", "http://127.0.0.1:47890"] {
-            if let Ok(h) = alt.parse::<HeaderValue>() {
-                if !list.contains(&h) {
-                    list.push(h);
-                }
+            if let Ok(h) = alt.parse::<HeaderValue>()
+                && !list.contains(&h)
+            {
+                list.push(h);
             }
         }
     }

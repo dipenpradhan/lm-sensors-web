@@ -231,18 +231,18 @@ fn check_temp(
             for sub in &feat.sub_features {
                 // Only check sub-features with "Temp" in the name (case-insensitive).
                 // lm-sensors 0.5.1 Debug output is PascalCase: TemperatureInput, etc.
-                if sub.name.to_lowercase().contains("temp") {
-                    if let Some(v) = sub.value {
-                        if let Some(above) = cond.above_celsius {
-                            if v > above {
-                                return true;
-                            }
-                        }
-                        if let Some(below) = cond.below_celsius {
-                            if v < below {
-                                return true;
-                            }
-                        }
+                if sub.name.to_lowercase().contains("temp")
+                    && let Some(v) = sub.value
+                {
+                    if let Some(above) = cond.above_celsius
+                        && v > above
+                    {
+                        return true;
+                    }
+                    if let Some(below) = cond.below_celsius
+                        && v < below
+                    {
+                        return true;
                     }
                 }
             }
@@ -261,11 +261,11 @@ fn avg_temp(readings: &crate::sensors::SensorReadings) -> Option<f64> {
     for dev in &readings.devices {
         for feat in &dev.features {
             for sub in &feat.sub_features {
-                if sub.name.to_lowercase().contains("temp") {
-                    if let Some(v) = sub.value {
-                        sum += v;
-                        count += 1;
-                    }
+                if sub.name.to_lowercase().contains("temp")
+                    && let Some(v) = sub.value
+                {
+                    sum += v;
+                    count += 1;
                 }
             }
         }
