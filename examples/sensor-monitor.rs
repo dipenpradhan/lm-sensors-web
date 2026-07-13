@@ -93,15 +93,14 @@ fn main() {
 
         for dev_readings in &readings.devices {
             // Apply filter if provided
-            if let Some(ref filter_str) = args.filter {
-                if !dev_readings
+            if let Some(ref filter_str) = args.filter
+                && !dev_readings
                     .device
                     .name
                     .to_lowercase()
                     .contains(&filter_str.to_lowercase())
-                {
-                    continue;
-                }
+            {
+                continue;
             }
 
             println!("\n  📦  {}", dev_readings.device.name);

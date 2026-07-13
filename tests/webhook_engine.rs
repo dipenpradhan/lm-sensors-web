@@ -337,19 +337,19 @@ fn check_temperature_condition(readings: &SensorReadings, cond: &WebhookConditio
     for dev in &readings.devices {
         for feat in &dev.features {
             for sub in &feat.sub_features {
-                if sub.name.contains("temp") {
-                    if let Some(v) = sub.value {
-                        if let Some(above) = cond.above_celsius {
-                            if v > above {
-                                return true;
-                            }
-                        }
-                        if let Some(below) = cond.below_celsius {
-                            if v < below {
-                                return true;
-                            }
-                        }
-                    }
+                if sub.name.contains("temp")
+                    && let Some(v) = sub.value
+                    && let Some(above) = cond.above_celsius
+                    && v > above
+                {
+                    return true;
+                }
+                if sub.name.contains("temp")
+                    && let Some(v) = sub.value
+                    && let Some(below) = cond.below_celsius
+                    && v < below
+                {
+                    return true;
                 }
             }
         }
@@ -364,11 +364,11 @@ fn compute_avg_temp(readings: &SensorReadings) -> Option<f64> {
     for dev in &readings.devices {
         for feat in &dev.features {
             for sub in &feat.sub_features {
-                if sub.name.contains("temp") {
-                    if let Some(v) = sub.value {
-                        sum += v;
-                        count += 1;
-                    }
+                if sub.name.contains("temp")
+                    && let Some(v) = sub.value
+                {
+                    sum += v;
+                    count += 1;
                 }
             }
         }
