@@ -55,11 +55,11 @@
 /// ```
 pub mod prelude {
     #[doc(no_inline)]
+    pub use super::Parser;
+    #[doc(no_inline)]
     pub use super::config::*;
     #[doc(no_inline)]
     pub use super::sensors::*;
-    #[doc(no_inline)]
-    pub use super::Parser;
 }
 
 // ── Re-export key traits so users don't need to add extra deps ───────
@@ -78,8 +78,8 @@ pub mod websocket;
 // sensor data, webhooks, or WebSocket broadcasting should stick to
 // the modules above.
 // ──────────────────────────────────────────────────────────────────────
-pub mod cli;
 #[doc(hidden)]
 pub mod api;
+pub mod cli;
 pub mod server;
 pub mod state;

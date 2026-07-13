@@ -27,7 +27,10 @@ use std::time::Duration;
 
 /// A simple sensor monitoring CLI tool using lm-sensors-web as a library.
 #[derive(Parser, Debug)]
-#[command(name = "sensor-monitor", about = "Real-time sensor monitor using lm-sensors-web")]
+#[command(
+    name = "sensor-monitor",
+    about = "Real-time sensor monitor using lm-sensors-web"
+)]
 struct Args {
     /// Poll interval in seconds
     #[arg(short, long, default_value_t = 5)]
@@ -53,7 +56,10 @@ fn main() {
     let devices = sensor_manager.list_devices();
     println!("Found {} sensor device(s):", devices.len());
     for device in &devices {
-        println!("  • {} (bus: {}, path: {:?})", device.name, device.bus, device.path);
+        println!(
+            "  • {} (bus: {}, path: {:?})",
+            device.name, device.bus, device.path
+        );
     }
 
     // ── 3. Load default config ─────────────────────────────────────────
@@ -62,7 +68,10 @@ fn main() {
     println!("  • Host:   {}", config.server.host);
     println!("  • Port:   {}", config.server.port);
     println!("  • Log:    {}", config.server.log_level);
-    println!("  • WS:     enabled={}, interval={}ms", config.websocket.enabled, config.websocket.broadcast_interval_ms);
+    println!(
+        "  • WS:     enabled={}, interval={}ms",
+        config.websocket.enabled, config.websocket.broadcast_interval_ms
+    );
     println!("  • Webhooks: {} configured", config.webhooks.len());
 
     println!("\nMonitoring every {}s (Ctrl+C to stop):\n", args.interval);
@@ -73,7 +82,10 @@ fn main() {
         let now = chrono::Local::now();
 
         println!("╔══════════════════════════════════════════════════════╗");
-        println!("║  Sensor Readings — {}                         ║", now.format("%Y-%m-%d %H:%M:%S"));
+        println!(
+            "║  Sensor Readings — {}                         ║",
+            now.format("%Y-%m-%d %H:%M:%S")
+        );
         println!("╚══════════════════════════════════════════════════════╝");
 
         let mut temp_min: Option<f64> = None;
@@ -82,7 +94,12 @@ fn main() {
         for dev_readings in &readings.devices {
             // Apply filter if provided
             if let Some(ref filter_str) = args.filter {
-                if !dev_readings.device.name.to_lowercase().contains(&filter_str.to_lowercase()) {
+                if !dev_readings
+                    .device
+                    .name
+                    .to_lowercase()
+                    .contains(&filter_str.to_lowercase())
+                {
                     continue;
                 }
             }
@@ -93,7 +110,11 @@ fn main() {
                 for sub in &feature.sub_features {
                     if let Some(value) = sub.value {
                         let unit_str = sub.unit.as_deref().unwrap_or("");
-                        let display = format!("{:.1}{}", value, if !unit_str.is_empty() { unit_str } else { "" });
+                        let display = format!(
+                            "{:.1}{}",
+                            value,
+                            if !unit_str.is_empty() { unit_str } else { "" }
+                        );
                         println!("     → {:20} = {}", sub.name, display);
 
                         // Track temperature stats
