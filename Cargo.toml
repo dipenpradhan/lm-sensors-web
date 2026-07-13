@@ -23,3 +23,6 @@ tower-http = { version = "0.6", features = ["cors", "fs", "limit"] }
 dirs = "6"
 tempfile = "3"
 tokio-util = { version = "0.7", features = ["rt"] }
+
+[build-dependencies]
+minifier = "0.3.6"

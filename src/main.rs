@@ -183,7 +183,13 @@ async fn run_server(cli: Cli, config: Config) -> Result<(), String> {
     };
 
     // ── Build Axum router ─────────────────────────────────
-    let app = server::create_router(state, Some(ws_path), ws_server.as_ref());
+    let app = server::create_router(
+        state,
+        Some(ws_path),
+        ws_server.as_ref(),
+        &config.server.host,
+        config.server.port,
+    );
 
     // ── Bind and serve ────────────────────────────────────
     let addr = format!("{}:{}", config.server.host, config.server.port);
