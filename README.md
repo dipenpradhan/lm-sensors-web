@@ -3,8 +3,11 @@
 Hardware sensor monitoring web application built in Rust. Exposes real-time sensor data (temperatures, voltages, fan speeds) from Linux `libsensors` via REST API, WebSocket live-feed, webhooks, and a dark-mode web dashboard.
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/Rust-1.70%2B-orange)](https://www.rust-lang.org)
-[![Tests](https://github.com/your-org/lm-sensors-web/actions/workflows/test.yaml/badge.svg)](https://github.com/your-org/lm-sensors-web/actions)
+[![Rust](https://img.shields.io/badge/Rust-1.87%2B-orange)](https://www.rust-lang.org)
+[![Crates.io](https://img.shields.io/crates/v/lm-sensors-web.svg)](https://crates.io/crates/lm-sensors-web)
+[![CI](https://github.com/dipenpradhan/lm-sensors-web/actions/workflows/test.yaml/badge.svg)](https://github.com/dipenpradhan/lm-sensors-web/actions)
+
+![lm-sensors-web dashboard](docs/lm-sensors-web.gif)
 
 ---
 
