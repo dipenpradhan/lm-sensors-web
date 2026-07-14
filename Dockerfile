@@ -2,15 +2,17 @@
 FROM rust:1-bookworm AS builder
 WORKDIR /app
 
-# Install libsensors build deps
+# Install libsensors build deps + python3 for build script
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libsensors-dev \
     pkg-config \
+    python3 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY Cargo.toml Cargo.lock* ./
 COPY src/ ./src/
 COPY static/ ./static/
+COPY build.rs build_dashboard.py ./
 RUN cargo build --release
 
 # Runtime stage
@@ -23,11 +25,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Work directory so relative paths (static/) resolve correctly
+# Work directory
 WORKDIR /app
 
 COPY --from=builder /app/target/release/lm-sensors-web /usr/local/bin/lm-sensors-web
-COPY --from=builder /app/static/ ./static/
 COPY config.example.json /etc/lm-sensors-web/config.json
 
 ENV RUST_LOG=info
